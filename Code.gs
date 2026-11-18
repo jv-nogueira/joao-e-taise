@@ -13,8 +13,14 @@ const LOG_SHEET_NAME = "Logs-Site";
 const TIME_ZONE = "America/Sao_Paulo";
 const RESPONSE_CHANNEL = "joao-taise-rsvp";
 const MERCADO_PAGO_TOKEN_PROPERTY = "MP_ACCESS_TOKEN";
+const PAYMENT_FEE_RATES_BPS = {
+  pix: 99,
+  cardSingle: 498,
+  cardTwoToSix: 299,
+  cardSevenToEighteen: 309
+};
 const GIFT_CATALOG = {
-  "gift-01": { title: "Ajuda para nosso café da manhã romântico", price: 250 },
+  "gift-01": { title: "Ajuda para nosso café da manhã romântico", price: 1 },
   "gift-02": { title: "Um brinde ao nosso amor 🥂", price: 300 },
   "gift-03": { title: "Um sorvete para adoçar nossa lua de mel", price: 50 },
   "gift-04": { title: "Um almoço com vista para o mar", price: 500 },
@@ -79,7 +85,8 @@ function createPixOrder_(giftId, email) {
   const gift = GIFT_CATALOG[giftId];
   if (!gift) throw new Error("Esse presente não está disponível. Atualize a página e tente novamente.");
   const payerEmail = validatePayerEmail_(email);
-  const amount = gift.price.toFixed(2);
+  const pricing = paymentPricing_(gift.price, PAYMENT_FEE_RATES_BPS.pix);
+  const amount = pricing.totalAmount;
   const order = createMercadoPagoOrder_({
     type: "online",
     processing_mode: "automatic",
@@ -95,7 +102,9 @@ function createPixOrder_(giftId, email) {
       }]
     }
   });
-  return paymentOrderSummary_(order);
+  const summary = paymentOrderSummary_(order);
+  summary.pricing = pricing;
+  return summary;
 }
 
 function createCardOrder_(giftId, rawCardData) {
@@ -118,11 +127,17 @@ function createCardOrder_(giftId, rawCardData) {
     || !/^[A-Za-z0-9]{32,33}$/.test(token)
     || !Number.isInteger(installments)
     || installments < 1
-    || installments > 36
-    || !["credit_card", "debit_card"].includes(paymentType)) {
+    || installments > 18
+    || paymentType !== "credit_card") {
     throw new Error("Os dados do cartão estão incompletos ou inválidos. Confira o formulário.");
   }
-  const amount = gift.price.toFixed(2);
+  const feeRate = installments === 1
+    ? PAYMENT_FEE_RATES_BPS.cardSingle
+    : installments <= 6
+      ? PAYMENT_FEE_RATES_BPS.cardTwoToSix
+      : PAYMENT_FEE_RATES_BPS.cardSevenToEighteen;
+  const pricing = paymentPricing_(gift.price, feeRate);
+  const amount = pricing.totalAmount;
   const paymentMethod = {
     id: paymentMethodId,
     type: paymentType,
@@ -153,7 +168,33 @@ function createCardOrder_(giftId, rawCardData) {
       payments: [{ amount: amount, payment_method: paymentMethod }]
     }
   };
-  return paymentOrderSummary_(createMercadoPagoOrder_(orderPayload));
+  const summary = paymentOrderSummary_(createMercadoPagoOrder_(orderPayload));
+  summary.pricing = pricing;
+  return summary;
+}
+
+function paymentPricing_(baseAmount, feeRateBps) {
+  const baseCents = Math.round(Number(baseAmount) * 100);
+  if (!Number.isSafeInteger(baseCents) || baseCents < 1
+    || !Number.isInteger(feeRateBps) || feeRateBps < 1 || feeRateBps >= 10000) {
+    throw new Error("Não foi possível calcular o valor do pagamento.");
+  }
+
+  const estimatedTotalCents = baseCents * 10000 / (10000 - feeRateBps);
+  const firstTotalCents = Math.max(baseCents, Math.floor(estimatedTotalCents) - 3);
+  const lastTotalCents = Math.ceil(estimatedTotalCents) + 3;
+  for (let totalCents = firstTotalCents; totalCents <= lastTotalCents; totalCents += 1) {
+    const feeCents = Math.round(totalCents * feeRateBps / 10000);
+    if (totalCents - feeCents === baseCents) {
+      return {
+        itemAmount: (baseCents / 100).toFixed(2),
+        processingFee: ((totalCents - baseCents) / 100).toFixed(2),
+        totalAmount: (totalCents / 100).toFixed(2),
+        feeRateBps: feeRateBps
+      };
+    }
+  }
+  throw new Error("Não foi possível calcular um total que cubra exatamente a tarifa.");
 }
 
 function createMercadoPagoOrder_(orderPayload) {

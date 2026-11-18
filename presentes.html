@@ -36,13 +36,28 @@
       <p class="modal-ornament" aria-hidden="true">✦</p>
       <h2 class="section-title" id="payment-title">Seu presente</h2>
       <p class="payment-gift-name" id="payment-gift-name"></p>
-      <p class="payment-gift-price" id="payment-gift-price"></p>
+      <p class="payment-gift-price">Valor do presente: <span id="payment-gift-price"></span></p>
       <p class="payment-security-note">Pagamento processado com segurança pelo Mercado Pago.</p>
 
+      <section class="payment-breakdown" id="payment-breakdown" aria-label="Resumo do pagamento" aria-live="polite" hidden>
+        <p class="payment-summary-row">
+          <span>Taxa de processamento (<span id="payment-fee-rate"></span>)</span>
+          <strong id="payment-fee-amount"></strong>
+        </p>
+        <p class="payment-summary-row payment-summary-total">
+          <span>Total a pagar</span>
+          <strong id="payment-total-amount"></strong>
+        </p>
+      </section>
+
       <div class="payment-methods" role="group" aria-label="Forma de pagamento">
-        <button class="payment-method-button" type="button" data-payment-method="card">Cartão</button>
+        <button class="payment-method-button" type="button" data-payment-method="card">Cartão de crédito</button>
         <button class="payment-method-button" type="button" data-payment-method="pix">Pix</button>
       </div>
+
+      <p class="card-fee-note" id="card-fee-note" hidden>
+        Selecione o número de parcelas no formulário. A taxa e o total serão exibidos para sua confirmação antes do pagamento.
+      </p>
 
       <form class="pix-form" id="pix-form" hidden>
         <label class="field-label" for="pix-email">Seu e-mail</label>
@@ -53,6 +68,12 @@
       <div id="card-checkout" hidden>
         <div id="card-payment-brick"></div>
       </div>
+      <section class="card-payment-review" id="card-payment-review" aria-label="Confirmação do pagamento" hidden>
+        <p id="card-installment-summary"></p>
+        <p>Confira os valores acima antes de concluir o pagamento.</p>
+        <button class="button button-primary" id="confirm-card-payment" type="button">Confirmar e pagar</button>
+        <button class="button gift-button" id="cancel-card-review" type="button">Voltar para os dados do cartão</button>
+      </section>
       <p class="card-challenge-instructions" id="card-challenge-instructions" hidden>
         Para proteger seu pagamento, confirme sua identidade no desafio do banco abaixo.
       </p>

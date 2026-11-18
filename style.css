@@ -315,6 +315,26 @@ a { color: inherit; }
 .payment-gift-name { margin: 4px 0; color: var(--olive); font-size: .9rem; line-height: 1.5; }
 .payment-gift-price { margin: 8px 0; color: var(--olive-dark); font: 600 1rem var(--sans); }
 .payment-security-note { margin: 12px 0 18px; color: var(--muted); font: .66rem/1.6 var(--sans); }
+.payment-breakdown {
+  max-width: 430px;
+  margin: 16px auto;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  background: #fff;
+  text-align: left;
+}
+.payment-summary-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 8px 0;
+  color: var(--muted);
+  font: .76rem/1.5 var(--sans);
+}
+.payment-summary-row strong { color: var(--olive-dark); font-weight: 600; white-space: nowrap; }
+.payment-summary-total { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--olive); font-size: .9rem; font-weight: 600; }
+.payment-summary-total strong { color: var(--olive); font-size: 1rem; }
 .payment-methods { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 0 0 18px; }
 .payment-method-button {
   min-height: 44px;
@@ -326,6 +346,9 @@ a { color: inherit; }
   letter-spacing: .04em;
 }
 .payment-method-button:hover, .payment-method-button.is-selected { background: var(--gold-pale); }
+.card-fee-note, .card-payment-review > p { max-width: 430px; margin: 14px auto; color: var(--muted); font: .74rem/1.6 var(--sans); }
+.card-payment-review { max-width: 430px; margin: 18px auto; }
+.card-payment-review .button { width: 100%; margin-top: 10px; }
 .pix-form { max-width: 430px; margin: 0 auto; text-align: left; }
 .pix-form .button-primary { margin-top: 14px; }
 #card-payment-brick { min-height: 200px; text-align: left; }

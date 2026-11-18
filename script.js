@@ -379,6 +379,21 @@
     const paymentComplete = document.getElementById("payment-complete");
     const paymentDone = document.getElementById("payment-done");
     const checkPaymentButton = document.getElementById("check-payment-button");
+    const paymentBreakdown = document.getElementById("payment-breakdown");
+    const paymentFeeRate = document.getElementById("payment-fee-rate");
+    const paymentFeeAmount = document.getElementById("payment-fee-amount");
+    const paymentTotalAmount = document.getElementById("payment-total-amount");
+    const cardFeeNote = document.getElementById("card-fee-note");
+    const cardPaymentReview = document.getElementById("card-payment-review");
+    const cardInstallmentSummary = document.getElementById("card-installment-summary");
+    const confirmCardPaymentButton = document.getElementById("confirm-card-payment");
+    const cancelCardReviewButton = document.getElementById("cancel-card-review");
+    const paymentFeeRatesBps = { pix: 99, cardSingle: 498, cardTwoToSix: 299, cardSevenToEighteen: 309 };
+    const percentage = new Intl.NumberFormat("pt-BR", {
+      style: "percent",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
     let activeGift = null;
     let activeOrderId = "";
     let paymentFlow = 0;
@@ -386,10 +401,51 @@
     let cardBrickPromise = null;
     let mercadoPago = null;
     let pollingFlow = 0;
+    let pendingCardPayment = null;
 
     function setPaymentMessage(message, isError = false) {
       paymentMessage.textContent = message;
       paymentMessage.classList.toggle("is-error", isError);
+    }
+
+    function calculatePaymentPricing(baseAmount, feeRateBps) {
+      const baseCents = Math.round(Number(baseAmount) * 100);
+      if (!Number.isSafeInteger(baseCents) || baseCents < 1
+        || !Number.isInteger(feeRateBps) || feeRateBps < 1 || feeRateBps >= 10000) {
+        throw new Error("Não foi possível calcular o valor do pagamento.");
+      }
+
+      const estimatedTotalCents = baseCents * 10000 / (10000 - feeRateBps);
+      const firstTotalCents = Math.max(baseCents, Math.floor(estimatedTotalCents) - 3);
+      const lastTotalCents = Math.ceil(estimatedTotalCents) + 3;
+      for (let totalCents = firstTotalCents; totalCents <= lastTotalCents; totalCents += 1) {
+        const feeCents = Math.round(totalCents * feeRateBps / 10000);
+        if (totalCents - feeCents === baseCents) {
+          return {
+            itemAmount: (baseCents / 100).toFixed(2),
+            processingFee: ((totalCents - baseCents) / 100).toFixed(2),
+            totalAmount: (totalCents / 100).toFixed(2),
+            feeRateBps
+          };
+        }
+      }
+      throw new Error("Não foi possível calcular um total que cubra exatamente a tarifa.");
+    }
+
+    function showPaymentPricing(pricing) {
+      paymentFeeRate.textContent = percentage.format(pricing.feeRateBps / 10000);
+      paymentFeeAmount.textContent = currency.format(Number(pricing.processingFee));
+      paymentTotalAmount.textContent = currency.format(Number(pricing.totalAmount));
+      paymentBreakdown.hidden = false;
+    }
+
+    function cardFeeRateForInstallments(installments) {
+      if (!Number.isInteger(installments) || installments < 1 || installments > 18) {
+        throw new Error("O cartão pode ser parcelado em até 18 vezes.");
+      }
+      if (installments === 1) return paymentFeeRatesBps.cardSingle;
+      if (installments <= 6) return paymentFeeRatesBps.cardTwoToSix;
+      return paymentFeeRatesBps.cardSevenToEighteen;
     }
 
     function unmountCardBrick() {
@@ -467,6 +523,7 @@
       } else if (isFinalFailure(result)) {
         setPaymentMessage("O pagamento não foi aprovado. Você pode tentar novamente ou escolher outra forma de pagamento.", true);
         activeOrderId = "";
+        unmountCardBrick();
         checkPaymentButton.hidden = true;
         challengeFrame.hidden = true;
         challengeInstructions.hidden = true;
@@ -542,12 +599,20 @@
     function closePaymentModal() {
       paymentFlow += 1;
       activeOrderId = "";
+      if (pendingCardPayment) {
+        const pendingPayment = pendingCardPayment;
+        pendingCardPayment = null;
+        pendingPayment.reject(new Error("CARD_PAYMENT_REVIEW_CANCELLED"));
+      }
       modal.hidden = true;
       unmountCardBrick();
       pixForm.reset();
       pixForm.hidden = true;
       pixResult.hidden = true;
       cardCheckout.hidden = true;
+      cardPaymentReview.hidden = true;
+      cardFeeNote.hidden = true;
+      paymentBreakdown.hidden = true;
       paymentComplete.hidden = true;
       checkPaymentButton.hidden = true;
       challengeFrame.hidden = true;
@@ -573,8 +638,101 @@
       paymentFlow += 1;
       giftName.textContent = gift.title;
       giftPrice.textContent = currency.format(gift.price);
+      paymentBreakdown.hidden = true;
+      cardFeeNote.hidden = true;
+      cardPaymentReview.hidden = true;
+      setPaymentMessage("");
       modal.hidden = false;
       closeButton.focus();
+    }
+
+    function prepareCardPaymentReview(formData, additionalData, flow) {
+      return new Promise((resolve, reject) => {
+        if (flow !== paymentFlow) {
+          reject(new Error("Esta sessão de pagamento foi encerrada."));
+          return;
+        }
+        if (String(additionalData && additionalData.paymentTypeId || "") !== "credit_card") {
+          const error = new Error("Selecione um cartão de crédito para continuar.");
+          setPaymentMessage(error.message, true);
+          reject(error);
+          return;
+        }
+
+        let installments;
+        let pricing;
+        try {
+          installments = Number(formData.installments);
+          pricing = calculatePaymentPricing(activeGift.price, cardFeeRateForInstallments(installments));
+        } catch (error) {
+          setPaymentMessage(error.message, true);
+          reject(error);
+          return;
+        }
+
+        pendingCardPayment = {
+          formData,
+          paymentType: "credit_card",
+          flow,
+          pricing,
+          resolve,
+          reject
+        };
+        cardInstallmentSummary.textContent = installments === 1
+          ? "Pagamento em 1x no cartão de crédito."
+          : `Pagamento em ${installments}x no cartão de crédito.`;
+        showPaymentPricing(pricing);
+        cardCheckout.hidden = true;
+        cardFeeNote.hidden = true;
+        cardPaymentReview.hidden = false;
+        methodButtons.forEach((button) => { button.hidden = true; });
+        setPaymentMessage("");
+      });
+    }
+
+    async function confirmCardPayment() {
+      const pendingPayment = pendingCardPayment;
+      if (!pendingPayment || pendingPayment.flow !== paymentFlow) return;
+
+      confirmCardPaymentButton.disabled = true;
+      cancelCardReviewButton.disabled = true;
+      confirmCardPaymentButton.textContent = "Processando...";
+      setPaymentMessage("Processando o pagamento com segurança...");
+      try {
+        const result = await sendToAppsScript("POST", {
+          action: "createCardOrder",
+          giftId: activeGift.id,
+          cardData: JSON.stringify({
+            formData: pendingPayment.formData,
+            paymentType: pendingPayment.paymentType
+          })
+        }, 45000);
+        if (pendingPayment.flow !== paymentFlow) return;
+        if (result.pricing) showPaymentPricing(result.pricing);
+        pendingCardPayment = null;
+        cardPaymentReview.hidden = true;
+        pendingPayment.resolve();
+        showOrderResult(result, pendingPayment.flow);
+      } catch (error) {
+        if (pendingPayment.flow === paymentFlow) setPaymentMessage(error.message, true);
+      } finally {
+        confirmCardPaymentButton.disabled = false;
+        cancelCardReviewButton.disabled = false;
+        confirmCardPaymentButton.textContent = "Confirmar e pagar";
+      }
+    }
+
+    function cancelCardPaymentReview() {
+      const pendingPayment = pendingCardPayment;
+      if (!pendingPayment) return;
+      pendingCardPayment = null;
+      cardPaymentReview.hidden = true;
+      paymentBreakdown.hidden = true;
+      cardCheckout.hidden = false;
+      cardFeeNote.hidden = false;
+      methodButtons.forEach((button) => { button.hidden = false; });
+      setPaymentMessage("Pagamento não enviado. Confira os dados do cartão e tente novamente.");
+      pendingPayment.reject(new Error("CARD_PAYMENT_REVIEW_CANCELLED"));
     }
 
     async function mountCardBrick() {
@@ -593,33 +751,20 @@
           cardBrickController = await bricksBuilder.create("cardPayment", "card-payment-brick", {
             initialization: { amount: gift.price },
             customization: {
+              visual: { texts: { formSubmit: "Revisar valores" } },
               paymentMethods: { 
                 minInstallments: 1,
-                maxInstallments: 36 }
+                maxInstallments: 18,
+                types: { included: ["credit_card"] }
+              }
             },
             callbacks: {
               onReady: () => {
                 if (flow === paymentFlow) setPaymentMessage("");
               },
-              onSubmit: async (formData, additionalData) => {
-                if (flow !== paymentFlow) throw new Error("Esta sessão de pagamento foi encerrada.");
-                try {
-                  setPaymentMessage("Processando o pagamento com segurança...");
-                  const result = await sendToAppsScript("POST", {
-                    action: "createCardOrder",
-                    giftId: gift.id,
-                    cardData: JSON.stringify({
-                      formData,
-                      paymentType: additionalData && additionalData.paymentTypeId
-                    })
-                  }, 45000);
-                  if (flow === paymentFlow) showOrderResult(result, flow);
-                } catch (error) {
-                  if (flow === paymentFlow) setPaymentMessage(error.message, true);
-                  throw error;
-                }
-              },
+              onSubmit: (formData, additionalData) => prepareCardPaymentReview(formData, additionalData, flow),
               onError: (error) => {
+                if (error && error.message === "CARD_PAYMENT_REVIEW_CANCELLED") return;
                 console.error("Erro no formulário do Mercado Pago.", error);
                 if (flow === paymentFlow) {
                   setPaymentMessage("Não foi possível carregar ou validar o formulário do cartão. Tente novamente.", true);
@@ -656,14 +801,27 @@
       pixResult.hidden = true;
       pixForm.hidden = method !== "pix";
       cardCheckout.hidden = method !== "card";
-      if (method === "card") await mountCardBrick();
-      if (method === "pix") pixEmail.focus();
+      paymentBreakdown.hidden = true;
+      cardPaymentReview.hidden = true;
+      cardFeeNote.hidden = method !== "card";
+      if (method === "card") {
+        await mountCardBrick();
+      } else if (method === "pix") {
+        try {
+          showPaymentPricing(calculatePaymentPricing(activeGift.price, paymentFeeRatesBps.pix));
+          pixEmail.focus();
+        } catch (error) {
+          setPaymentMessage(error.message, true);
+        }
+      }
     }
 
     methodButtons.forEach((button) => {
       button.setAttribute("aria-pressed", "false");
       button.addEventListener("click", () => selectPaymentMethod(button.dataset.paymentMethod));
     });
+    confirmCardPaymentButton.addEventListener("click", confirmCardPayment);
+    cancelCardReviewButton.addEventListener("click", cancelCardPaymentReview);
 
     pixForm.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -679,6 +837,7 @@
           email: pixEmail.value.trim()
         }, 45000);
         if (flow !== paymentFlow) return;
+        if (result.pricing) showPaymentPricing(result.pricing);
         if (isFinalFailure(result)) {
           showOrderResult(result, flow);
           return;
