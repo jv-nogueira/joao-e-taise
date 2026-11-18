@@ -29,7 +29,7 @@
         reject(new Error("Não foi possível iniciar a conexão com o formulário."));
         return;
       }
-      const requestId = `${Date.now()}-${Array.from(crypto.getRandomValues(new Uint32Array(2)), (value) => value.toString(12)).join("")}`;
+      const requestId = `${Date.now()}-${Array.from(crypto.getRandomValues(new Uint32Array(2)), (value) => value.toString(36)).join("")}`;
       const timeout = window.setTimeout(() => {
         window.removeEventListener("message", onMessage);
         reject(new Error("O servidor demorou para responder. Tente novamente."));
@@ -80,16 +80,22 @@
     const accessForm = document.getElementById("access-form");
     if (!accessForm) return;
 
+    const accessSessionKey = "joao-taise-rsvp-session";
+    const loginView = document.getElementById("login-view");
     const phoneInput = document.getElementById("phone");
     const accessMessage = document.getElementById("access-message");
     const accessButton = document.getElementById("access-button");
     const rsvpView = document.getElementById("rsvp-view");
     const alreadyView = document.getElementById("already-view");
+    const logoutButton = document.getElementById("logout-button");
     const guestOptions = document.getElementById("guest-options");
     const confirmButton = document.getElementById("confirm-button");
     const rsvpMessage = document.getElementById("rsvp-message");
     const rsvpForm = document.getElementById("rsvp-form");
     const modal = document.getElementById("thank-you-modal");
+    const invitationHero = document.querySelector(".invitation-hero");
+    const giftsNavLink = document.getElementById("gifts-nav-link");
+    const siteFooter = document.querySelector(".site-footer");
     let activeGuests = [];
     let activePhone = "";
 
@@ -117,32 +123,104 @@
           accessMessage.textContent = "Não encontramos esse celular na lista. Confira o número ou fale com os noivos.";
           return;
         }
-        document.getElementById("login-view").hidden = true;
-        if (result.alreadyResponded) {
-          const names = result.responses.map((response) => `${response.name}: ${response.status === "Confirmado" ? "presença confirmada" : "não poderá comparecer"}`).join(" · ");
-          document.getElementById("already-message").textContent = names || "Sua resposta foi registrada anteriormente.";
-          alreadyView.hidden = false;
-          return;
-        }
-        activeGuests = result.guests;
-        document.getElementById("welcome-message").textContent = `Olá, ${result.guests[0].name}, que bom te ver aqui!`;
-        document.getElementById("guest-question").textContent = `${result.guests[0].name}, você estará presente no grande dia de João e Taise?`;
-        const statusMessage = (result.responses || []).map((response) =>
-          `${response.name}: ${response.status === "Confirmado" ? "presença confirmada" : "não poderá comparecer"}`
-        ).join(" · ");
-        const statusElement = document.getElementById("rsvp-status");
-        statusElement.textContent = statusMessage;
-        statusElement.hidden = !statusMessage;
-        renderGuestQuestions();
-        rsvpView.hidden = false;
-        showConfetti();
+        saveAccessSession(phone, result);
+        showAccessResult(phone, result, true);
       } catch (error) {
         accessMessage.textContent = error.message;
       } finally {
         accessButton.disabled = false;
-        accessButton.textContent = "Acessar convite";
+        accessButton.textContent = "Consultar convite";
       }
     });
+
+    logoutButton.addEventListener("click", () => {
+      clearAccessSession();
+      activeGuests = [];
+      activePhone = "";
+      invitationHero.hidden = true;
+      giftsNavLink.hidden = true;
+      siteFooter.hidden = true;
+      loginView.hidden = false;
+      rsvpView.hidden = true;
+      alreadyView.hidden = true;
+      logoutButton.hidden = true;
+      phoneInput.value = "";
+      accessMessage.textContent = "";
+      rsvpMessage.textContent = "";
+      phoneInput.focus();
+    });
+
+    function saveAccessSession(phone, result) {
+      try {
+        window.sessionStorage.setItem(accessSessionKey, JSON.stringify({ phone, result }));
+      } catch (error) {
+        console.error("Não foi possível guardar a sessão do convite nesta aba.", error);
+      }
+    }
+
+    function clearAccessSession() {
+      try {
+        window.sessionStorage.removeItem(accessSessionKey);
+      } catch (error) {
+        console.error("Não foi possível encerrar a sessão do convite nesta aba.", error);
+      }
+    }
+
+    function restoreAccessSession() {
+      let savedSession;
+      try {
+        const serializedSession = window.sessionStorage.getItem(accessSessionKey);
+        if (!serializedSession) return;
+        savedSession = JSON.parse(serializedSession);
+        const validPhone = savedSession
+          && typeof savedSession.phone === "string"
+          && BR_PHONE_LENGTHS.includes(onlyDigits(savedSession.phone).length);
+        const result = savedSession && savedSession.result;
+        const validResult = result
+          && result.found === true
+          && typeof result.alreadyResponded === "boolean"
+          && Array.isArray(result.responses)
+          && (result.alreadyResponded || (Array.isArray(result.guests) && result.guests.length > 0));
+        if (!validPhone || !validResult) {
+          clearAccessSession();
+          return;
+        }
+      } catch (error) {
+        console.error("Não foi possível restaurar a sessão do convite.", error);
+        clearAccessSession();
+        return;
+      }
+      showAccessResult(savedSession.phone, savedSession.result, false);
+    }
+
+    function showAccessResult(phone, result, celebrate) {
+      activePhone = onlyDigits(phone);
+      invitationHero.hidden = false;
+      giftsNavLink.hidden = false;
+      siteFooter.hidden = false;
+      loginView.hidden = true;
+      logoutButton.hidden = false;
+      if (result.alreadyResponded) {
+        const names = (result.responses || []).map((response) =>
+          `${response.name}: ${response.status === "Confirmado" ? "presença confirmada" : "não poderá comparecer"}`
+        ).join(" · ");
+        document.getElementById("already-message").textContent = names || "Sua resposta foi registrada anteriormente.";
+        alreadyView.hidden = false;
+        return;
+      }
+      activeGuests = result.guests;
+      document.getElementById("welcome-message").textContent = `Olá, ${result.guests[0].name}, que bom te ver aqui!`;
+      document.getElementById("guest-question").textContent = `${result.guests[0].name}, você estará presente no grande dia de João e Taise?`;
+      const statusMessage = (result.responses || []).map((response) =>
+        `${response.name}: ${response.status === "Confirmado" ? "presença confirmada" : "não poderá comparecer"}`
+      ).join(" · ");
+      const statusElement = document.getElementById("rsvp-status");
+      statusElement.textContent = statusMessage;
+      statusElement.hidden = !statusMessage;
+      renderGuestQuestions();
+      rsvpView.hidden = false;
+      if (celebrate) showConfetti();
+    }
 
     function renderGuestQuestions() {
       guestOptions.replaceChildren();
@@ -234,6 +312,11 @@
       }).filter(Boolean);
       try {
         await sendToAppsScript("POST", { action: "submit", phone: activePhone, answers: JSON.stringify(answers) });
+        saveAccessSession(activePhone, {
+          found: true,
+          alreadyResponded: true,
+          responses: []
+        });
         const mainDeclined = answers.some((answer) => answer.index === activeGuests[0].index && answer.answer === "Não");
         if (mainDeclined) {
           document.getElementById("modal-title").textContent = "Sentiremos sua falta";
@@ -252,6 +335,7 @@
       }
     });
 
+    restoreAccessSession();
   }
 
   const gifts = [
@@ -509,7 +593,9 @@
           cardBrickController = await bricksBuilder.create("cardPayment", "card-payment-brick", {
             initialization: { amount: gift.price },
             customization: {
-              paymentMethods: { maxInstallments: 12 }
+              paymentMethods: { 
+                minInstallments: 1,
+                maxInstallments: 36 }
             },
             callbacks: {
               onReady: () => {

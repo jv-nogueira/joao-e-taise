@@ -16,12 +16,12 @@
     <a class="brand" href="index.html" aria-label="João e Taise — início">J <span>&amp;</span> T</a>
     <nav class="site-nav" aria-label="Navegação principal">
       <a class="nav-link is-current" href="index.html" aria-current="page">Convite</a>
-      <a class="nav-link" href="presentes.html">Lista de presentes</a>
+      <a class="nav-link" id="gifts-nav-link" href="presentes.html" hidden>Lista de presentes</a>
     </nav>
   </header>
 
   <main>
-    <section class="hero invitation-hero" aria-labelledby="couple-name">
+    <section class="hero invitation-hero" aria-labelledby="couple-name" hidden>
       <p class="eyebrow">Com a bênção de Deus e de nossas famílias</p>
       <h1 class="couple-name" id="couple-name">João <span>&amp;</span> Taise</h1>
       <div class="ornament" aria-hidden="true"><span></span> ✦ <span></span></div>
@@ -36,13 +36,13 @@
     <section class="content-card rsvp-card" aria-labelledby="rsvp-title">
       <div id="login-view">
         <p class="eyebrow">Será uma alegria celebrar com você</p>
-        <h2 class="section-title" id="rsvp-title">Confirme sua presença</h2>
+        <h2 class="section-title" id="rsvp-title">Acesse seu convite</h2>
         <p class="section-copy">Informe o seu celular com DDD.</p>
         <form id="access-form" novalidate>
           <label class="field-label" for="phone">Celular com DDD</label>
           <input class="text-input" id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(11) 99999-9999" maxlength="16" required>
           <p class="form-message" id="access-message" role="status" aria-live="polite"></p>
-          <button class="button button-primary" id="access-button" type="submit">Acessar convite</button>
+          <button class="button button-primary" id="access-button" type="submit">Consultar convite</button>
         </form>
       </div>
 
@@ -55,6 +55,7 @@
           <div id="guest-options" class="guest-options"></div>
           <p class="form-message" id="rsvp-message" role="status" aria-live="polite"></p>
           <button class="button button-primary" id="confirm-button" type="submit" disabled>Confirmar presença</button>
+          <a class="button gift-button" href="presentes.html">Ver lista de presentes</a>
         </form>
       </div>
 
@@ -64,10 +65,11 @@
         <p class="section-copy" id="already-message"></p>
         <a class="button button-primary button-link" href="presentes.html">Ver lista de presentes</a>
       </div>
+      <button class="button logout-button" id="logout-button" type="button" hidden>Sair</button>
     </section>
   </main>
 
-  <footer class="site-footer">
+  <footer class="site-footer" hidden>
     <p>Com carinho, João &amp; Taise</p>
     <a href="presentes.html">Lista de presentes</a>
   </footer>
@@ -78,7 +80,7 @@
       <p class="eyebrow">João &amp; Taise</p>
       <h2 class="section-title" id="modal-title">Muito obrigado!</h2>
       <p class="section-copy" id="modal-description">Ficamos muito felizes por compartilhar esse momento tão especial com você. Caso queira nos presentear, preparamos uma lista com muito carinho.</p>
-      <a class="button button-primary button-link" id="modal-gifts-link" href="presentes.html">Abençoe nosso novo caminho</a>
+      <a class="button button-primary button-link" id="modal-gifts-link" href="presentes.html">FAÇA PARTE DA NOSSA LUA DE MEL</a>
     </section>
   </div>
 

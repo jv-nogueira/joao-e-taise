@@ -40,7 +40,7 @@ a { color: inherit; }
 .brand {
   color: var(--olive);
   font-family: var(--script);
-  font-size: 2rem;
+  font-size: 2.2rem;
   line-height: 1;
   text-decoration: none;
 }
@@ -55,7 +55,7 @@ a { color: inherit; }
 
 .nav-link, .site-footer a {
   color: var(--muted);
-  font: 500 .68rem var(--sans);
+  font: 500 .76rem var(--sans);
   letter-spacing: .04em;
   text-decoration: none;
   transition: color .2s ease;
@@ -131,7 +131,7 @@ a { color: inherit; }
 .venue { font-size: .81rem; }
 
 .content-card {
-  width: min(540px, calc(100% - 36px));
+  width: min(580px, calc(100% - 36px));
   margin: 0 auto 60px;
   padding: clamp(25px, 6vw, 42px);
   border: 1px solid var(--line);
@@ -140,11 +140,13 @@ a { color: inherit; }
   text-align: center;
 }
 
+.invitation-hero[hidden] + .rsvp-card { margin-top: clamp(48px, 10vh, 88px); }
+
 .section-title {
   margin: 0 0 12px;
   color: var(--olive);
   font-family: var(--serif);
-  font-size: clamp(1.35rem, 5vw, 1.7rem);
+  font-size: clamp(1.55rem, 5vw, 1.9rem);
   font-weight: 500;
   line-height: 1.4;
 }
@@ -153,7 +155,7 @@ a { color: inherit; }
   max-width: 620px;
   margin: 0 auto 24px;
   color: var(--muted);
-  font-size: .87rem;
+  font-size: .98rem;
   line-height: 1.8;
 }
 
@@ -161,7 +163,7 @@ a { color: inherit; }
   display: block;
   margin: 22px 0 8px;
   color: var(--olive);
-  font: 500 .7rem var(--sans);
+  font: 500 .8rem var(--sans);
   text-align: left;
 }
 
@@ -174,7 +176,7 @@ a { color: inherit; }
   outline: none;
   background: #fff;
   color: var(--olive-dark);
-  font: .9rem var(--sans);
+  font: .98rem var(--sans);
   transition: border-color .2s, box-shadow .2s;
 }
 
@@ -190,8 +192,8 @@ a { color: inherit; }
   border-radius: 2px;
   padding: 12px 22px;
   cursor: pointer;
-  font: 500 .68rem var(--sans);
-  letter-spacing: .08em;
+  font: 500 .76rem var(--sans);
+  letter-spacing: .06em;
   text-align: center;
   text-decoration: none;
   text-transform: uppercase;
@@ -202,10 +204,12 @@ a { color: inherit; }
 .button-primary:hover:not(:disabled) { border-color: var(--olive-dark); background: var(--olive-dark); }
 .button:disabled { cursor: not-allowed; opacity: .48; }
 .button-link { width: auto; margin-top: 4px; }
+.rsvp-card #rsvp-view .gift-button { width: 100%; margin-top: 12px; }
+.logout-button { width: 100%; margin-top: 12px; border-color: var(--line); color: var(--muted); }
 
-.form-message { min-height: 1.3em; margin: 8px 0 0; color: var(--error); font: .72rem/1.5 var(--sans); }
+.form-message { min-height: 1.3em; margin: 8px 0 0; color: var(--error); font: .8rem/1.5 var(--sans); }
 .guest-options { display: grid; gap: 14px; margin: 22px 0 4px; text-align: left; }
-.guest-question { margin: 0 0 9px; color: var(--olive); font-size: .95rem; line-height: 1.5; }
+.guest-question { margin: 0 0 9px; color: var(--olive); font-size: 1rem; line-height: 1.5; }
 .guest-group { padding-bottom: 13px; border-bottom: 1px solid var(--line); }
 .guest-group:last-child { border-bottom: 0; }
 
@@ -216,7 +220,7 @@ a { color: inherit; }
   margin: 8px 0;
   color: #625c4e;
   cursor: pointer;
-  font: .75rem/1.6 var(--sans);
+  font: .82rem/1.6 var(--sans);
 }
 
 .radio-option input { width: 16px; height: 16px; flex: 0 0 16px; margin: 1px 0 0; accent-color: var(--olive); }
@@ -232,7 +236,7 @@ a { color: inherit; }
   border-top: 1px solid var(--line);
 }
 
-.site-footer p { color: var(--muted); font: .67rem var(--sans); }
+.site-footer p { color: var(--muted); font: .75rem var(--sans); }
 
 .modal-backdrop {
   position: fixed;
@@ -345,13 +349,21 @@ a { color: inherit; }
 }
 
 @media (min-width: 900px) {
+  .rsvp-card { width: min(620px, calc(100% - 36px)); padding: 48px; }
+  .section-title { font-size: 2rem; }
+  .section-copy { font-size: 1.04rem; }
+  .field-label { font-size: .84rem; }
+  .text-input { min-height: 54px; }
+  .button { min-height: 52px; font-size: .8rem; }
+  .form-message { font-size: .84rem; }
+  .radio-option { font-size: .86rem; }
   .gift-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 420px) {
   .site-header { width: calc(100% - 28px); min-height: 66px; }
   .brand { font-size: 1.75rem; }
-  .nav-link { font-size: .59rem; }
+  .nav-link { font-size: .66rem; }
   .site-nav { gap: 14px; }
   .site-footer { width: calc(100% - 32px); }
 }
