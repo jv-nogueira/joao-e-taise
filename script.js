@@ -2,9 +2,9 @@
 
 (() => {
   // Cole aqui a URL do Web App publicado no Google Apps Script.
-  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzYsfGg4luW5Jv2WYayrCoz78g9Fb0oqKXRfA7uvm38ZXvY9uOV63FQp3seF-yGsTgK/exec";
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx3gnrj31dmaTadB0Ki0aMs72UeGZ58gQ31Vmm6KI6rN87lNKBvKmtrOi71HeI9BEUd/exec";
   // Chave pública do Mercado Pago: pode ficar no front-end; nunca coloque o Access Token aqui.
-  const MP_PUBLIC_KEY = "APP_USR-886bdd3a-9d32-4449-b511-2259f9afe5b9";
+  const MP_PUBLIC_KEY = "APP_USR-86b29075-f49a-4d12-b894-4f2024bd1c89";
   const API_CHANNEL = "joao-taise-rsvp";
   const BR_PHONE_LENGTHS = [10, 11];
 
