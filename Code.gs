@@ -5,12 +5,29 @@
  * 1. Informe o ID da planilha em SPREADSHEET_ID.
  * 2. A planilha precisa ter as abas ListaConvidados e Logs-Site.
  * 3. Os cabeçalhos requeridos são validados pelo nome exato na primeira linha.
+ * 4. Configure MP_ACCESS_TOKEN nas propriedades do script; nunca o inclua no código.
  */
 const SPREADSHEET_ID = "18fidFBXi2vK99DnuN8ci3A_RUpujnF4PqdgIJk-NHVM";
 const GUEST_SHEET_NAME = "ListaConvidados";
 const LOG_SHEET_NAME = "Logs-Site";
 const TIME_ZONE = "America/Sao_Paulo";
 const RESPONSE_CHANNEL = "joao-taise-rsvp";
+const MERCADO_PAGO_TOKEN_PROPERTY = "MP_ACCESS_TOKEN";
+const GIFT_CATALOG = {
+  "gift-01": { title: "Ajuda para nosso café da manhã romântico", price: 250 },
+  "gift-02": { title: "Um brinde ao nosso amor 🥂", price: 300 },
+  "gift-03": { title: "Um sorvete para adoçar nossa lua de mel", price: 50 },
+  "gift-04": { title: "Um almoço com vista para o mar", price: 500 },
+  "gift-05": { title: "Um jantar romântico a dois", price: 700 },
+  "gift-06": { title: "Uma experiência gastronômica especial", price: 400 },
+  "gift-07": { title: "Contribuição para nosso passeio de barco", price: 300 },
+  "gift-08": { title: "Um dia de aventuras em Arraial do Cabo", price: 1000 },
+  "gift-09": { title: "Uma experiência inesquecível para o casal", price: 600 },
+  "gift-10": { title: "Uma diária de passeios e descobertas", price: 400 },
+  "gift-11": { title: "Um presente para eternizar nossa viagem", price: 750 },
+  "gift-12": { title: "Uma contribuição especial para nossa lua de mel", price: 1500 },
+  "gift-13": { title: "O empurrãozinho para realizarmos nosso sonho", price: 2500 }
+};
 
 function doGet(e) {
   const requestId = validRequestId_(e && e.parameter ? e.parameter.requestId : "");
@@ -31,21 +48,207 @@ function doPost(e) {
   const requestId = validRequestId_(e && e.parameter ? e.parameter.requestId : "");
   let result;
   try {
-    if (!e || !e.parameter || e.parameter.action !== "submit") {
+    if (!e || !e.parameter) {
       throw new Error("Solicitação inválida.");
     }
-    const answers = JSON.parse(e.parameter.answers || "[]");
-    result = submitAnswers_(e.parameter.phone || "", answers);
+    if (e.parameter.action === "submit") {
+      const answers = JSON.parse(e.parameter.answers || "[]");
+      result = submitAnswers_(e.parameter.phone || "", answers);
+    } else if (e.parameter.action === "createPixOrder") {
+      result = createPixOrder_(e.parameter.giftId || "", e.parameter.email || "");
+    } else if (e.parameter.action === "createCardOrder") {
+      result = createCardOrder_(e.parameter.giftId || "", e.parameter.cardData || "");
+    } else if (e.parameter.action === "paymentStatus") {
+      result = getMercadoPagoOrderStatus_(e.parameter.orderId || "");
+    } else {
+      throw new Error("Solicitação inválida.");
+    }
   } catch (error) {
     console.error(error);
     result = {
       ok: false,
-      message: error && error.message === "Essa resposta já foi registrada."
+      message: error && error.message
         ? error.message
-        : "Não foi possível salvar sua resposta. Confira os dados e tente novamente."
+        : "Não foi possível concluir a solicitação. Tente novamente."
     };
   }
   return responsePage_(requestId, result);
+}
+
+function createPixOrder_(giftId, email) {
+  const gift = GIFT_CATALOG[giftId];
+  if (!gift) throw new Error("Esse presente não está disponível. Atualize a página e tente novamente.");
+  const payerEmail = validatePayerEmail_(email);
+  const amount = gift.price.toFixed(2);
+  const order = createMercadoPagoOrder_({
+    type: "online",
+    processing_mode: "automatic",
+    capture_mode: "automatic",
+    external_reference: giftId + "-" + Utilities.getUuid(),
+    total_amount: amount,
+    description: gift.title,
+    payer: { email: payerEmail },
+    transactions: {
+      payments: [{
+        amount: amount,
+        payment_method: { id: "pix", type: "bank_transfer" }
+      }]
+    }
+  });
+  return paymentOrderSummary_(order);
+}
+
+function createCardOrder_(giftId, rawCardData) {
+  const gift = GIFT_CATALOG[giftId];
+  if (!gift) throw new Error("Esse presente não está disponível. Atualize a página e tente novamente.");
+  let cardData;
+  try {
+    cardData = JSON.parse(rawCardData);
+  } catch (error) {
+    throw new Error("Não foi possível validar os dados do cartão. Tente novamente.");
+  }
+
+  const formData = cardData.formData || {};
+  const payer = formData.payer || {};
+  const paymentType = String(cardData.paymentType || "");
+  const paymentMethodId = String(formData.payment_method_id || "");
+  const token = String(formData.token || "");
+  const installments = Number(formData.installments);
+  if (!/^[A-Za-z0-9_-]{1,40}$/.test(paymentMethodId)
+    || !/^[A-Za-z0-9]{32,33}$/.test(token)
+    || !Number.isInteger(installments)
+    || installments < 1
+    || installments > 36
+    || !["credit_card", "debit_card"].includes(paymentType)) {
+    throw new Error("Os dados do cartão estão incompletos ou inválidos. Confira o formulário.");
+  }
+  const amount = gift.price.toFixed(2);
+  const paymentMethod = {
+    id: paymentMethodId,
+    type: paymentType,
+    token: token,
+    installments: installments
+  };
+  if (formData.issuer_id) paymentMethod.issuer_id = String(formData.issuer_id);
+  const orderPayload = {
+    type: "online",
+    processing_mode: "automatic",
+    capture_mode: "automatic",
+    external_reference: giftId + "-" + Utilities.getUuid(),
+    total_amount: amount,
+    description: gift.title,
+    config: {
+      online: {
+        transaction_security: {
+          validation: "on_fraud_risk",
+          liability_shift: "required"
+        }
+      }
+    },
+    payer: {
+      email: validatePayerEmail_(payer.email),
+      identification: payer.identification || undefined
+    },
+    transactions: {
+      payments: [{ amount: amount, payment_method: paymentMethod }]
+    }
+  };
+  return paymentOrderSummary_(createMercadoPagoOrder_(orderPayload));
+}
+
+function createMercadoPagoOrder_(orderPayload) {
+  const accessToken = mercadoPagoAccessToken_();
+  const apiResponse = UrlFetchApp.fetch("https://api.mercadopago.com/v1/orders", {
+    method: "post",
+    contentType: "application/json",
+    headers: {
+      Authorization: "Bearer " + accessToken,
+      "X-Idempotency-Key": Utilities.getUuid()
+    },
+    payload: JSON.stringify(orderPayload),
+    muteHttpExceptions: true
+  });
+  const statusCode = apiResponse.getResponseCode();
+  let order;
+  try {
+    order = JSON.parse(apiResponse.getContentText());
+  } catch (error) {
+    console.error("Mercado Pago order returned a non-JSON response (" + statusCode + ").");
+    throw new Error("O Mercado Pago não respondeu corretamente. Tente novamente.");
+  }
+  if (statusCode === 402 && order.id) return order;
+  if (statusCode < 200 || statusCode >= 300) {
+    console.error("Mercado Pago order failed (" + statusCode + "): " + JSON.stringify(order.errors || order.cause || []));
+    throw new Error("Não foi possível processar o pagamento. Confira os dados e tente novamente.");
+  }
+  if (!order.id) {
+    console.error("Mercado Pago order response is missing its id.");
+    throw new Error("O Mercado Pago não retornou a identificação do pagamento. Tente novamente.");
+  }
+  return order;
+}
+
+function getMercadoPagoOrderStatus_(orderId) {
+  if (!/^ORD[A-Z0-9]{8,48}$/i.test(orderId)) throw new Error("Não foi possível consultar este pagamento.");
+  const response = UrlFetchApp.fetch("https://api.mercadopago.com/v1/orders/" + encodeURIComponent(orderId), {
+    method: "get",
+    headers: { Authorization: "Bearer " + mercadoPagoAccessToken_() },
+    muteHttpExceptions: true
+  });
+  const statusCode = response.getResponseCode();
+  if (statusCode < 200 || statusCode >= 300) {
+    console.error("Mercado Pago order status failed (" + statusCode + ").");
+    throw new Error("Não foi possível consultar o status do pagamento. Tente novamente.");
+  }
+  return paymentOrderSummary_(JSON.parse(response.getContentText()));
+}
+
+function paymentOrderSummary_(order) {
+  const payments = order.transactions && Array.isArray(order.transactions.payments)
+    ? order.transactions.payments
+    : [];
+  const payment = payments.length ? payments[0] : {};
+  const method = payment.payment_method || {};
+  const transactionSecurity = method.transaction_security || {};
+  return {
+    ok: true,
+    orderId: String(order.id || ""),
+    status: String(order.status || payment.status || ""),
+    statusDetail: String(order.status_detail || payment.status_detail || ""),
+    qrCode: String(method.qr_code || ""),
+    qrCodeBase64: String(method.qr_code_base64 || ""),
+    ticketUrl: String(method.ticket_url || ""),
+    challengeUrl: String(transactionSecurity.url || "")
+  };
+}
+
+function validatePayerEmail_(email) {
+  const value = String(email || "").trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) || value.length > 254) {
+    throw new Error("Informe um e-mail válido para gerar o pagamento.");
+  }
+  return value;
+}
+
+function mercadoPagoAccessToken_() {
+  const accessToken = PropertiesService.getScriptProperties().getProperty(MERCADO_PAGO_TOKEN_PROPERTY);
+  if (!accessToken) {
+    throw new Error("O pagamento ainda está sendo configurado. Tente novamente mais tarde.");
+  }
+  return accessToken;
+}
+
+function testMercadoPagoConnection() {
+  const accessToken = mercadoPagoAccessToken_();
+  const response = UrlFetchApp.fetch("https://api.mercadopago.com/users/me", {
+    method: "get",
+    headers: { Authorization: "Bearer " + accessToken },
+    muteHttpExceptions: true
+  });
+  if (response.getResponseCode() !== 200) {
+    throw new Error("O Mercado Pago recusou a credencial. Confira se o token de produção está correto.");
+  }
+  return "Conexão com Mercado Pago validada.";
 }
 
 function accessGuest_(rawPhone) {

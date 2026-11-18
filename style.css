@@ -288,7 +288,55 @@ a { color: inherit; }
 .gift-price { margin: auto 0 15px; color: var(--olive-dark); font: 600 .85rem var(--sans); }
 .gift-button { width: 100%; min-height: 42px; border-color: var(--gold); background: transparent; color: var(--olive); }
 .gift-button:hover { background: var(--gold-pale); }
-.gift-notice { margin: 8px 0 0; color: var(--muted); font: .62rem/1.5 var(--sans); text-align: center; }
+.payment-modal {
+  width: min(680px, 100%);
+  max-height: calc(100vh - 44px);
+  overflow-y: auto;
+  padding: clamp(26px, 6vw, 46px);
+}
+
+.payment-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: 1.7rem/1 var(--sans);
+}
+
+.payment-gift-name { margin: 4px 0; color: var(--olive); font-size: .9rem; line-height: 1.5; }
+.payment-gift-price { margin: 8px 0; color: var(--olive-dark); font: 600 1rem var(--sans); }
+.payment-security-note { margin: 12px 0 18px; color: var(--muted); font: .66rem/1.6 var(--sans); }
+.payment-methods { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 0 0 18px; }
+.payment-method-button {
+  min-height: 44px;
+  border: 1px solid var(--gold);
+  background: transparent;
+  color: var(--olive);
+  cursor: pointer;
+  font: 500 .7rem var(--sans);
+  letter-spacing: .04em;
+}
+.payment-method-button:hover, .payment-method-button.is-selected { background: var(--gold-pale); }
+.pix-form { max-width: 430px; margin: 0 auto; text-align: left; }
+.pix-form .button-primary { margin-top: 14px; }
+#card-payment-brick { min-height: 200px; text-align: left; }
+.card-challenge-instructions { margin: 18px 0 10px; color: var(--olive); font: .75rem/1.6 var(--sans); }
+.card-challenge-frame { display: block; width: 100%; min-height: 480px; border: 1px solid var(--line); background: #fff; }
+.pix-result { max-width: 420px; margin: 20px auto 0; color: var(--olive); font: .77rem/1.6 var(--sans); }
+.pix-result img { display: block; width: min(240px, 100%); aspect-ratio: 1; margin: 12px auto; object-fit: contain; }
+.pix-copy-code { resize: vertical; font: .7rem/1.5 var(--sans); }
+.pix-result .gift-button { width: 100%; }
+.pix-ticket-link { display: inline-block; margin-top: 12px; color: var(--olive); font: 500 .7rem var(--sans); }
+.payment-message { min-height: 1.4em; margin: 14px 0 0; color: var(--olive); font: .7rem/1.6 var(--sans); }
+.payment-message.is-error { color: var(--error); }
+.check-payment-button { width: 100%; margin-top: 8px; }
+.payment-complete { margin-top: 14px; color: var(--olive); font-size: .9rem; line-height: 1.7; }
+.payment-complete .button-primary { width: 100%; }
 
 @media (min-width: 600px) {
   .gift-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }

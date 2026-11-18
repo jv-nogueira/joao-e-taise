@@ -2,7 +2,9 @@
 
 (() => {
   // Cole aqui a URL do Web App publicado no Google Apps Script.
-  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzBpMSMETjv0Cv9hZTYMmC6c38IuRIZzQAQ8E3hARu7TUiQzQEJapsc5IhBMBli5suK/exec";
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzYsfGg4luW5Jv2WYayrCoz78g9Fb0oqKXRfA7uvm38ZXvY9uOV63FQp3seF-yGsTgK/exec";
+  // Chave pública do Mercado Pago: pode ficar no front-end; nunca coloque o Access Token aqui.
+  const MP_PUBLIC_KEY = "APP_USR-886bdd3a-9d32-4449-b511-2259f9afe5b9";
   const API_CHANNEL = "joao-taise-rsvp";
   const BR_PHONE_LENGTHS = [10, 11];
 
@@ -15,7 +17,7 @@
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
   };
 
-  function sendToAppsScript(method, fields) {
+  function sendToAppsScript(method, fields, timeoutMs = 20000) {
     return new Promise((resolve, reject) => {
       if (!APPS_SCRIPT_URL.startsWith("https://script.google.com/macros/s/")) {
         reject(new Error("A integração ainda não foi configurada. Informe a URL do Web App em script.js."));
@@ -27,11 +29,11 @@
         reject(new Error("Não foi possível iniciar a conexão com o formulário."));
         return;
       }
-      const requestId = `${Date.now()}-${Array.from(crypto.getRandomValues(new Uint32Array(2)), (value) => value.toString(36)).join("")}`;
+      const requestId = `${Date.now()}-${Array.from(crypto.getRandomValues(new Uint32Array(2)), (value) => value.toString(12)).join("")}`;
       const timeout = window.setTimeout(() => {
         window.removeEventListener("message", onMessage);
         reject(new Error("O servidor demorou para responder. Tente novamente."));
-      }, 20000);
+      }, timeoutMs);
 
       function onMessage(event) {
         const trustedOrigin = /^https:\/\/([a-z0-9-]+\.)*(script\.google\.com|googleusercontent\.com)$/i.test(event.origin);
@@ -253,25 +255,427 @@
   }
 
   const gifts = [
-    { title: "Ajuda para nosso café da manhã romântico", price: 250, image: "photo-1504754524776-8f4f37790ca0", alt: "Mesa farta de café da manhã com frutas, waffles, ovos e café" },
-    { title: "Um brinde ao nosso amor 🥂", price: 300, image: "photo-1510812431401-41d2bd2722f3", alt: "Taças para um brinde especial" },
-    { title: "Um sorvete para adoçar nossa lua de mel", price: 50, image: "photo-1563805042-7684c019e1cb", alt: "Sorvete artesanal" },
-    { title: "Um almoço com vista para o mar", price: 500, image: "photo-1766547325390-44833aa5675b", alt: "Buffet servido em restaurante à beira-mar, com o oceano ao fundo" },
-    { title: "Um jantar romântico a dois", price: 700, image: "photo-1517248135467-4c7edcad34c4", alt: "Mesa preparada para jantar" },
-    { title: "Uma experiência gastronômica especial", price: 400, image: "photo-1414235077428-338989a2e8c0", alt: "Prato de gastronomia especial" },
-    { title: "Contribuição para nosso passeio de barco", price: 300, image: "photo-1500375592092-40eb2168fd21", alt: "Barco navegando no mar" },
-    { title: "Um dia de aventuras em Arraial do Cabo", price: 1000, image: "photo-1507525428034-b723cf961d3e", alt: "Praia de águas claras" },
-    { title: "Uma experiência inesquecível para o casal", price: 600, image: "photo-1476514525535-07fb3b4ae5f1", alt: "Viagem por uma paisagem à beira d'água" },
-    { title: "Uma diária de passeios e descobertas", price: 400, image: "photo-1464822759023-fed622ff2c3b", alt: "Paisagem de montanhas para explorar" },
-    { title: "Um presente para eternizar nossa viagem", price: 750, image: "photo-1488646953014-85cb44e25828", alt: "Itens de viagem sobre um mapa" },
-    { title: "Uma contribuição especial para nossa lua de mel", price: 1500, image: "photo-1530789253388-582c481c54b0", alt: "Paisagem de viagem ao pôr do sol" },
-    { title: "O empurrãozinho para realizarmos nosso sonho", price: 2500, image: "photo-1470252649378-9c29740c9fa8", alt: "Nascer do sol sobre uma paisagem" }
+    { id: "gift-01", title: "Ajuda para nosso café da manhã romântico", price: 1, image: "photo-1504754524776-8f4f37790ca0", alt: "Mesa farta de café da manhã com frutas, waffles, ovos e café" },
+    { id: "gift-02", title: "Um brinde ao nosso amor 🥂", price: 300, image: "photo-1510812431401-41d2bd2722f3", alt: "Taças para um brinde especial" },
+    { id: "gift-03", title: "Um sorvete para adoçar nossa lua de mel", price: 50, image: "photo-1563805042-7684c019e1cb", alt: "Sorvete artesanal" },
+    { id: "gift-04", title: "Um almoço com vista para o mar", price: 500, image: "photo-1766547325390-44833aa5675b", alt: "Buffet servido em restaurante à beira-mar, com o oceano ao fundo" },
+    { id: "gift-05", title: "Um jantar romântico a dois", price: 700, image: "photo-1517248135467-4c7edcad34c4", alt: "Mesa preparada para jantar" },
+    { id: "gift-06", title: "Uma experiência gastronômica especial", price: 400, image: "photo-1414235077428-338989a2e8c0", alt: "Prato de gastronomia especial" },
+    { id: "gift-07", title: "Contribuição para nosso passeio de barco", price: 300, image: "photo-1500375592092-40eb2168fd21", alt: "Barco navegando no mar" },
+    { id: "gift-08", title: "Um dia de aventuras em Arraial do Cabo", price: 1000, image: "photo-1507525428034-b723cf961d3e", alt: "Praia de águas claras" },
+    { id: "gift-09", title: "Uma experiência inesquecível para o casal", price: 600, image: "photo-1476514525535-07fb3b4ae5f1", alt: "Viagem por uma paisagem à beira d'água" },
+    { id: "gift-10", title: "Uma diária de passeios e descobertas", price: 400, image: "photo-1464822759023-fed622ff2c3b", alt: "Paisagem de montanhas para explorar" },
+    { id: "gift-11", title: "Um presente para eternizar nossa viagem", price: 750, image: "photo-1488646953014-85cb44e25828", alt: "Itens de viagem sobre um mapa" },
+    { id: "gift-12", title: "Uma contribuição especial para nossa lua de mel", price: 1500, image: "photo-1530789253388-582c481c54b0", alt: "Paisagem de viagem ao pôr do sol" },
+    { id: "gift-13", title: "O empurrãozinho para realizarmos nosso sonho", price: 2500, image: "photo-1470252649378-9c29740c9fa8", alt: "Nascer do sol sobre uma paisagem" }
   ];
 
   function initGiftList() {
     const list = document.getElementById("gift-list");
     if (!list) return;
     const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+    const modal = document.getElementById("payment-modal");
+    const closeButton = document.getElementById("close-payment-modal");
+    const giftName = document.getElementById("payment-gift-name");
+    const giftPrice = document.getElementById("payment-gift-price");
+    const methodButtons = Array.from(document.querySelectorAll("[data-payment-method]"));
+    const pixForm = document.getElementById("pix-form");
+    const pixEmail = document.getElementById("pix-email");
+    const pixSubmit = document.getElementById("pix-submit");
+    const pixResult = document.getElementById("pix-result");
+    const pixQrCode = document.getElementById("pix-qr-code");
+    const pixCopyContainer = document.getElementById("pix-copy-container");
+    const pixCopyCode = document.getElementById("pix-copy-code");
+    const copyPixButton = document.getElementById("copy-pix-code");
+    const pixTicketLink = document.getElementById("pix-ticket-link");
+    const cardCheckout = document.getElementById("card-checkout");
+    const challengeFrame = document.getElementById("card-challenge-frame");
+    const challengeInstructions = document.getElementById("card-challenge-instructions");
+    const paymentMessage = document.getElementById("payment-message");
+    const paymentComplete = document.getElementById("payment-complete");
+    const paymentDone = document.getElementById("payment-done");
+    const checkPaymentButton = document.getElementById("check-payment-button");
+    let activeGift = null;
+    let activeOrderId = "";
+    let paymentFlow = 0;
+    let cardBrickController = null;
+    let cardBrickPromise = null;
+    let mercadoPago = null;
+    let pollingFlow = 0;
+
+    function setPaymentMessage(message, isError = false) {
+      paymentMessage.textContent = message;
+      paymentMessage.classList.toggle("is-error", isError);
+    }
+
+    function unmountCardBrick() {
+      if (!cardBrickController) return;
+      try {
+        const unmountResult = cardBrickController.unmount();
+        if (unmountResult && typeof unmountResult.catch === "function") {
+          unmountResult.catch((error) => console.error("Não foi possível desmontar o formulário do cartão.", error));
+        }
+      } catch (error) {
+        console.error("Não foi possível desmontar o formulário do cartão.", error);
+      }
+      cardBrickController = null;
+    }
+
+    function isPaid(result) {
+      return result.status.toLowerCase() === "processed"
+        && result.statusDetail.toLowerCase() === "accredited";
+    }
+
+    function isFinalFailure(result) {
+      return ["failed", "canceled", "cancelled", "expired", "closed"].includes(result.status.toLowerCase());
+    }
+
+    function isChallenge(result) {
+      return result.status.toLowerCase() === "action_required"
+        && result.statusDetail.toLowerCase() === "pending_challenge";
+    }
+
+    function isMercadoPagoUrl(value) {
+      try {
+        const url = new URL(value);
+        return url.protocol === "https:"
+          && /(^|\.)mercadopago\.com(\.[a-z]{2})?$/i.test(url.hostname);
+      } catch (error) {
+        return false;
+      }
+    }
+
+    function showCardChallenge(result) {
+      if (!isMercadoPagoUrl(result.challengeUrl)) {
+        setPaymentMessage("O banco solicitou uma verificação, mas não foi possível abrir o desafio com segurança. Consulte o pagamento novamente ou tente outro cartão.", true);
+        checkPaymentButton.hidden = false;
+        return;
+      }
+      challengeFrame.src = result.challengeUrl;
+      challengeFrame.hidden = false;
+      challengeInstructions.hidden = false;
+      cardCheckout.hidden = true;
+      pixForm.hidden = true;
+      pixResult.hidden = true;
+      methodButtons.forEach((button) => { button.hidden = true; });
+      setPaymentMessage("Aguardando a verificação do banco. Não feche esta janela até concluir.");
+    }
+
+    function showPaid() {
+      paymentFlow += 1;
+      paymentComplete.hidden = false;
+      pixForm.hidden = true;
+      pixResult.hidden = true;
+      cardCheckout.hidden = true;
+      challengeFrame.hidden = true;
+      challengeInstructions.hidden = true;
+      challengeFrame.src = "about:blank";
+      checkPaymentButton.hidden = true;
+      methodButtons.forEach((button) => { button.hidden = true; });
+      setPaymentMessage("");
+      paymentDone.focus();
+    }
+
+    function applyOrderStatus(result, flow, isPolling = false) {
+      if (flow !== paymentFlow) return;
+      if (isPaid(result)) {
+        showPaid();
+      } else if (isFinalFailure(result)) {
+        setPaymentMessage("O pagamento não foi aprovado. Você pode tentar novamente ou escolher outra forma de pagamento.", true);
+        activeOrderId = "";
+        checkPaymentButton.hidden = true;
+        challengeFrame.hidden = true;
+        challengeInstructions.hidden = true;
+        challengeFrame.src = "about:blank";
+        methodButtons.forEach((button) => { button.hidden = false; });
+        if (pixResult.hidden === false) {
+          pixResult.hidden = true;
+          pixForm.hidden = false;
+        }
+      } else if (isChallenge(result)) {
+        setPaymentMessage("Aguardando a verificação do banco. Não feche esta janela até concluir.");
+      } else {
+        if (!isPolling) {
+          setPaymentMessage("Aguardando a confirmação do Mercado Pago. O Pix pode levar alguns instantes para ser reconhecido.");
+        }
+      }
+    }
+
+    async function checkOrderStatus(orderId, flow, isPolling = false) {
+      const result = await sendToAppsScript("POST", { action: "paymentStatus", orderId });
+      if (flow === paymentFlow) applyOrderStatus(result, flow, isPolling);
+      return result;
+    }
+
+    async function pollOrderStatus(orderId, flow) {
+      if (pollingFlow === flow) return;
+      pollingFlow = flow;
+      try {
+        const endTime = Date.now() + 15 * 60000;
+        let lastPollTime = 0;
+
+        while (flow === paymentFlow && Date.now() < endTime) {
+          const now = Date.now();
+          const remaining = Math.max(0, endTime - now);
+          const minutes = Math.floor(remaining / 60000);
+          const seconds = Math.floor((remaining % 60000) / 1000);
+          const timeString = `${minutes}:${seconds.toString().padStart(2, "0")}`;
+
+          if (pixResult.hidden === false) {
+            setPaymentMessage(`Aguardando confirmação... O Pix expira em ${timeString}.`);
+          }
+
+          if (now - lastPollTime >= 5000) {
+            lastPollTime = now;
+            try {
+              const result = await checkOrderStatus(orderId, flow, true);
+              if (isPaid(result) || isFinalFailure(result)) return;
+            } catch (error) {
+              // Ignora erros de rede temporários durante a verificação automática
+            }
+          }
+          await new Promise((resolve) => window.setTimeout(resolve, 1000));
+        }
+
+        if (flow === paymentFlow && activeOrderId) {
+          setPaymentMessage("O tempo expirou. Se você já pagou, aguarde ou consulte o pagamento manualmente.");
+          checkPaymentButton.hidden = false;
+        }
+      } finally {
+        if (pollingFlow === flow) pollingFlow = 0;
+      }
+    }
+
+    function showOrderResult(result, flow) {
+      activeOrderId = result.orderId || "";
+      if (isChallenge(result)) showCardChallenge(result);
+      else applyOrderStatus(result, flow);
+      if (!isPaid(result) && !isFinalFailure(result) && activeOrderId) {
+        pollOrderStatus(activeOrderId, flow);
+      }
+    }
+
+    function closePaymentModal() {
+      paymentFlow += 1;
+      activeOrderId = "";
+      modal.hidden = true;
+      unmountCardBrick();
+      pixForm.reset();
+      pixForm.hidden = true;
+      pixResult.hidden = true;
+      cardCheckout.hidden = true;
+      paymentComplete.hidden = true;
+      checkPaymentButton.hidden = true;
+      challengeFrame.hidden = true;
+      challengeInstructions.hidden = true;
+      challengeFrame.src = "about:blank";
+      methodButtons.forEach((button) => {
+        button.hidden = false;
+        button.classList.remove("is-selected");
+        button.setAttribute("aria-pressed", "false");
+      });
+      pixQrCode.removeAttribute("src");
+      pixQrCode.hidden = false;
+      pixCopyContainer.hidden = false;
+      pixCopyCode.value = "";
+      pixTicketLink.removeAttribute("href");
+      pixTicketLink.hidden = true;
+      setPaymentMessage("");
+    }
+
+    function openPaymentModal(gift) {
+      activeGift = gift;
+      activeOrderId = "";
+      paymentFlow += 1;
+      giftName.textContent = gift.title;
+      giftPrice.textContent = currency.format(gift.price);
+      modal.hidden = false;
+      closeButton.focus();
+    }
+
+    async function mountCardBrick() {
+      if (cardBrickController) return;
+      if (cardBrickPromise) return cardBrickPromise;
+      if (!MP_PUBLIC_KEY || MP_PUBLIC_KEY.indexOf("APP_USR-") !== 0 || !window.MercadoPago) {
+        setPaymentMessage("O formulário do cartão ainda não está disponível. Tente novamente mais tarde.", true);
+        return;
+      }
+      const gift = activeGift;
+      const flow = paymentFlow;
+      cardBrickPromise = (async () => {
+        try {
+          mercadoPago = mercadoPago || new window.MercadoPago(MP_PUBLIC_KEY, { locale: "pt-BR" });
+          const bricksBuilder = mercadoPago.bricks();
+          cardBrickController = await bricksBuilder.create("cardPayment", "card-payment-brick", {
+            initialization: { amount: gift.price },
+            customization: {
+              paymentMethods: { maxInstallments: 12 }
+            },
+            callbacks: {
+              onReady: () => {
+                if (flow === paymentFlow) setPaymentMessage("");
+              },
+              onSubmit: async (formData, additionalData) => {
+                if (flow !== paymentFlow) throw new Error("Esta sessão de pagamento foi encerrada.");
+                try {
+                  setPaymentMessage("Processando o pagamento com segurança...");
+                  const result = await sendToAppsScript("POST", {
+                    action: "createCardOrder",
+                    giftId: gift.id,
+                    cardData: JSON.stringify({
+                      formData,
+                      paymentType: additionalData && additionalData.paymentTypeId
+                    })
+                  }, 45000);
+                  if (flow === paymentFlow) showOrderResult(result, flow);
+                } catch (error) {
+                  if (flow === paymentFlow) setPaymentMessage(error.message, true);
+                  throw error;
+                }
+              },
+              onError: (error) => {
+                console.error("Erro no formulário do Mercado Pago.", error);
+                if (flow === paymentFlow) {
+                  setPaymentMessage("Não foi possível carregar ou validar o formulário do cartão. Tente novamente.", true);
+                }
+              }
+            }
+          });
+          if (flow !== paymentFlow) unmountCardBrick();
+        } catch (error) {
+          console.error("Não foi possível carregar o formulário do cartão.", error);
+          if (flow === paymentFlow) {
+            setPaymentMessage("Não foi possível carregar o formulário do cartão. Tente novamente mais tarde.", true);
+          }
+        }
+      })();
+      try {
+        await cardBrickPromise;
+      } finally {
+        cardBrickPromise = null;
+        if (flow !== paymentFlow && !modal.hidden && !cardCheckout.hidden && !cardBrickController) {
+          window.setTimeout(() => mountCardBrick(), 0);
+        }
+      }
+    }
+
+    async function selectPaymentMethod(method) {
+      if (activeOrderId) return;
+      methodButtons.forEach((button) => {
+        const selected = button.dataset.paymentMethod === method;
+        button.classList.toggle("is-selected", selected);
+        button.setAttribute("aria-pressed", String(selected));
+      });
+      setPaymentMessage("");
+      pixResult.hidden = true;
+      pixForm.hidden = method !== "pix";
+      cardCheckout.hidden = method !== "card";
+      if (method === "card") await mountCardBrick();
+      if (method === "pix") pixEmail.focus();
+    }
+
+    methodButtons.forEach((button) => {
+      button.setAttribute("aria-pressed", "false");
+      button.addEventListener("click", () => selectPaymentMethod(button.dataset.paymentMethod));
+    });
+
+    pixForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!pixForm.reportValidity() || !activeGift) return;
+      const flow = paymentFlow;
+      pixSubmit.disabled = true;
+      pixSubmit.textContent = "Gerando Pix...";
+      setPaymentMessage("Conectando com o Mercado Pago...");
+      try {
+        const result = await sendToAppsScript("POST", {
+          action: "createPixOrder",
+          giftId: activeGift.id,
+          email: pixEmail.value.trim()
+        }, 45000);
+        if (flow !== paymentFlow) return;
+        if (isFinalFailure(result)) {
+          showOrderResult(result, flow);
+          return;
+        }
+        if (result.qrCodeBase64) {
+          const imageData = result.qrCodeBase64;
+          pixQrCode.src = imageData.indexOf("data:image/") === 0 ? imageData : `data:image/png;base64,${imageData}`;
+          pixQrCode.hidden = false;
+        } else {
+          pixQrCode.removeAttribute("src");
+          pixQrCode.hidden = true;
+        }
+        const hasTicketUrl = isMercadoPagoUrl(result.ticketUrl);
+        if (hasTicketUrl) {
+          pixTicketLink.href = result.ticketUrl;
+          pixTicketLink.hidden = false;
+        }
+        if (!result.qrCode && !result.qrCodeBase64 && !hasTicketUrl) {
+          throw new Error("O Mercado Pago não retornou os dados do Pix. Tente novamente.");
+        }
+        pixCopyCode.value = result.qrCode || "";
+        pixCopyContainer.hidden = !result.qrCode;
+        pixResult.hidden = false;
+        pixForm.hidden = true;
+        methodButtons.forEach((button) => { button.hidden = true; });
+        showOrderResult(result, flow);
+      } catch (error) {
+        if (flow === paymentFlow) setPaymentMessage(error.message, true);
+      } finally {
+        pixSubmit.disabled = false;
+        pixSubmit.textContent = "Gerar Pix";
+      }
+    });
+
+    copyPixButton.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(pixCopyCode.value);
+        setPaymentMessage("Código Pix copiado.");
+      } catch (error) {
+        pixCopyCode.focus();
+        pixCopyCode.select();
+        const copied = document.execCommand("copy");
+        setPaymentMessage(copied ? "Código Pix copiado." : "Selecione e copie o código Pix.");
+      }
+    });
+
+    checkPaymentButton.addEventListener("click", async () => {
+      if (!activeOrderId) return;
+      checkPaymentButton.disabled = true;
+      setPaymentMessage("Consultando o Mercado Pago...");
+      try {
+        const result = await checkOrderStatus(activeOrderId, paymentFlow);
+        if (!isPaid(result) && !isFinalFailure(result)) {
+          setPaymentMessage("O Mercado Pago ainda não confirmou o pagamento. Tente consultar novamente em instantes.");
+        }
+      } catch (error) {
+        setPaymentMessage(error.message, true);
+      } finally {
+        checkPaymentButton.disabled = false;
+      }
+    });
+
+    window.addEventListener("message", (event) => {
+      if (event.source !== challengeFrame.contentWindow
+        || !isMercadoPagoUrl(event.origin)
+        || !event.data
+        || event.data.status !== "COMPLETE"
+        || !activeOrderId) return;
+      setPaymentMessage("Verificação concluída. Confirmando o pagamento...");
+      checkOrderStatus(activeOrderId, paymentFlow).catch((error) => {
+        setPaymentMessage(error.message, true);
+      });
+    });
+
+    closeButton.addEventListener("click", closePaymentModal);
+    paymentDone.addEventListener("click", closePaymentModal);
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) closePaymentModal();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !modal.hidden) closePaymentModal();
+    });
+
     gifts.forEach((gift) => {
       const card = document.createElement("article");
       card.className = "gift-card";
@@ -288,27 +692,12 @@
       const price = document.createElement("p");
       price.className = "gift-price";
       price.textContent = currency.format(gift.price);
-      const link = document.createElement("a");
-      link.className = "button gift-button";
-      // Substitua o valor de data-link pelo link de pagamento correspondente.
-      link.href = "#";
-      link.dataset.link = "#";
-      link.textContent = "Selecionar";
-      link.addEventListener("click", (event) => {
-        if (link.dataset.link === "#") {
-          event.preventDefault();
-          notice.hidden = false;
-        } else {
-          link.href = link.dataset.link;
-          link.target = "_blank";
-          link.rel = "noopener noreferrer";
-        }
-      });
-      const notice = document.createElement("p");
-      notice.className = "gift-notice";
-      notice.textContent = "Link de pagamento em breve.";
-      notice.hidden = true;
-      content.append(title, price, link, notice);
+      const button = document.createElement("button");
+      button.className = "button gift-button";
+      button.type = "button";
+      button.textContent = "Selecionar";
+      button.addEventListener("click", () => openPaymentModal(gift));
+      content.append(title, price, button);
       card.append(image, content);
       list.appendChild(card);
     });

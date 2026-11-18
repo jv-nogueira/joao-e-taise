@@ -30,10 +30,60 @@
     <section class="gift-grid" id="gift-list" aria-label="Opções de presentes"></section>
   </main>
 
+  <div class="modal-backdrop" id="payment-modal" hidden>
+    <section class="modal payment-modal" role="dialog" aria-modal="true" aria-labelledby="payment-title">
+      <button class="payment-modal-close" id="close-payment-modal" type="button" aria-label="Fechar pagamento">&times;</button>
+      <p class="modal-ornament" aria-hidden="true">✦</p>
+      <h2 class="section-title" id="payment-title">Seu presente</h2>
+      <p class="payment-gift-name" id="payment-gift-name"></p>
+      <p class="payment-gift-price" id="payment-gift-price"></p>
+      <p class="payment-security-note">Pagamento processado com segurança pelo Mercado Pago.</p>
+
+      <div class="payment-methods" role="group" aria-label="Forma de pagamento">
+        <button class="payment-method-button" type="button" data-payment-method="card">Cartão</button>
+        <button class="payment-method-button" type="button" data-payment-method="pix">Pix</button>
+      </div>
+
+      <form class="pix-form" id="pix-form" hidden>
+        <label class="field-label" for="pix-email">Seu e-mail</label>
+        <input class="text-input" id="pix-email" type="email" autocomplete="email" maxlength="254" required placeholder="voce@exemplo.com">
+        <button class="button button-primary" id="pix-submit" type="submit">Gerar Pix</button>
+      </form>
+
+      <div id="card-checkout" hidden>
+        <div id="card-payment-brick"></div>
+      </div>
+      <p class="card-challenge-instructions" id="card-challenge-instructions" hidden>
+        Para proteger seu pagamento, confirme sua identidade no desafio do banco abaixo.
+      </p>
+      <iframe class="card-challenge-frame" id="card-challenge-frame" title="Verificação segura do cartão" hidden></iframe>
+
+      <section class="pix-result" id="pix-result" aria-live="polite" hidden>
+        <p>Conclua o pagamento usando uma das opções abaixo:</p>
+        <img id="pix-qr-code" alt="QR Code Pix para pagamento">
+        <div id="pix-copy-container">
+          <label class="field-label" for="pix-copy-code">Pix copia e cola</label>
+          <textarea class="text-input pix-copy-code" id="pix-copy-code" rows="3" readonly></textarea>
+          <button class="button gift-button" id="copy-pix-code" type="button">Copiar código Pix</button>
+        </div>
+        <a class="pix-ticket-link" id="pix-ticket-link" target="_blank" rel="noopener noreferrer" hidden>Abrir instruções do Pix</a>
+      </section>
+
+      <p class="payment-message" id="payment-message" role="status" aria-live="polite"></p>
+      <button class="button gift-button check-payment-button" id="check-payment-button" type="button" hidden>Consultar pagamento</button>
+      <div class="payment-complete" id="payment-complete" hidden>
+        <p>Pagamento confirmado. Muito obrigado por fazer parte da nossa história!</p>
+        <button class="button button-primary" id="payment-done" type="button">Voltar à lista de presentes</button>
+      </div>
+    </section>
+  </div>
+
   <footer class="site-footer">
     <p>Com carinho, João &amp; Taise</p>
     <a href="index.html">Voltar ao convite</a>
   </footer>
+  <iframe class="api-frame" id="api-frame" name="api-frame" title="Conexão segura com o serviço de pagamento"></iframe>
+  <script src="https://sdk.mercadopago.com/js/v2"></script>
   <script src="script.js" defer></script>
 </body>
 </html>
