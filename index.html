@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#faf9f6">
+  <meta name="description" content="Confirme sua presença no casamento de João e Taise, em 12 de dezembro de 2026.">
+  <title>João &amp; Taise — Confirmação de presença</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Lora:wght@400;500;600&family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="index.html" aria-label="João e Taise — início">J <span>&amp;</span> T</a>
+    <nav class="site-nav" aria-label="Navegação principal">
+      <a class="nav-link is-current" href="index.html" aria-current="page">Convite</a>
+      <a class="nav-link" href="presentes.html">Lista de presentes</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero invitation-hero" aria-labelledby="couple-name">
+      <p class="eyebrow">Com a bênção de Deus e de nossas famílias</p>
+      <h1 class="couple-name" id="couple-name">João <span>&amp;</span> Taise</h1>
+      <div class="ornament" aria-hidden="true"><span></span> ✦ <span></span></div>
+      <p class="verse">“Assim, eles já não são dois, mas uma só carne. Portanto, o que Deus uniu, ninguém o separe.”</p>
+      <p class="verse-reference">Mateus 19:6</p>
+      <div class="event-details">
+        <p><span class="detail-label">12 de dezembro de 2026</span><span class="detail-divider">·</span><span class="detail-label">às 13h30</span></p>
+        <p class="venue">Coco Bambu — Shopping SP Market</p>
+      </div>
+    </section>
+
+    <section class="content-card rsvp-card" aria-labelledby="rsvp-title">
+      <div id="login-view">
+        <p class="eyebrow">Será uma alegria celebrar com você</p>
+        <h2 class="section-title" id="rsvp-title">Confirme sua presença</h2>
+        <p class="section-copy">Informe o seu celular com DDD.</p>
+        <form id="access-form" novalidate>
+          <label class="field-label" for="phone">Celular com DDD</label>
+          <input class="text-input" id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(11) 99999-9999" maxlength="16" required>
+          <p class="form-message" id="access-message" role="status" aria-live="polite"></p>
+          <button class="button button-primary" id="access-button" type="submit">Acessar convite</button>
+        </form>
+      </div>
+
+      <div id="rsvp-view" hidden>
+        <p class="eyebrow" id="welcome-message"></p>
+        <h2 class="section-title" id="guest-question"></h2>
+        <p class="section-copy" id="rsvp-status" hidden></p>
+        <p class="section-copy">Sua resposta é muito importante para nós.</p>
+        <form id="rsvp-form">
+          <div id="guest-options" class="guest-options"></div>
+          <p class="form-message" id="rsvp-message" role="status" aria-live="polite"></p>
+          <button class="button button-primary" id="confirm-button" type="submit" disabled>Confirmar presença</button>
+        </form>
+      </div>
+
+      <div id="already-view" hidden>
+        <p class="eyebrow">Que bom receber sua visita</p>
+        <h2 class="section-title">Sua resposta já foi registrada</h2>
+        <p class="section-copy" id="already-message"></p>
+        <a class="button button-primary button-link" href="presentes.html">Ver lista de presentes</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Com carinho, João &amp; Taise</p>
+    <a href="presentes.html">Lista de presentes</a>
+  </footer>
+
+  <div class="modal-backdrop" id="thank-you-modal" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-ornament" aria-hidden="true">✦</div>
+      <p class="eyebrow">João &amp; Taise</p>
+      <h2 class="section-title" id="modal-title">Muito obrigado!</h2>
+      <p class="section-copy" id="modal-description">Ficamos muito felizes por compartilhar esse momento tão especial com você. Caso queira nos presentear, preparamos uma lista com muito carinho.</p>
+      <a class="button button-primary button-link" id="modal-gifts-link" href="presentes.html">Abençoe nosso novo caminho</a>
+    </section>
+  </div>
+
+  <iframe class="api-frame" id="api-frame" name="api-frame" title="Conexão segura com o formulário de presença"></iframe>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js" defer></script>
+  <script src="script.js" defer></script>
+</body>
+</html>
