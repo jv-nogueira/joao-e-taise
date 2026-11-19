@@ -2,7 +2,7 @@
 
 (() => {
   // Cole aqui a URL do Web App publicado no Google Apps Script.
-  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxWZnmVrwFfRmpBV6WKTcXUBWiDBno-IkqxOaNDxQyXnWkdRY_vhz0QStCP0XRQgXQV/exec";
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyYHeFudrCdPcodFEgpN4Vq9bIGUkuzRAPlJOr1FWn6aoiduiOIcsaboVuOPpoms5ei/exec";
   // Chave pública do Mercado Pago: pode ficar no front-end; nunca coloque o Access Token aqui.
   const MP_PUBLIC_KEY = "APP_USR-86b29075-f49a-4d12-b894-4f2024bd1c89";
   const API_CHANNEL = "joao-taise-rsvp";
@@ -714,7 +714,7 @@
       giftName.textContent = gift.title;
       giftPrice.textContent = currency.format(gift.price);
       customGiftAmount.hidden = !gift.customAmount;
-      customGiftPrice.value = gift.customAmount ? "1.00" : "";
+      customGiftPrice.value = gift.customAmount ? "1,00" : "";
       methodButtons.forEach((button) => { button.hidden = false; });
       if (gift.customAmount) updateCustomGiftAmount();
       paymentBreakdown.hidden = true;
@@ -726,8 +726,17 @@
       else closeButton.focus();
     }
 
+    function normalizeCustomAmountInput(value) {
+      const cleaned = String(value || "").replace(/[^\d,.]/g, "");
+      const separatorIndex = cleaned.search(/[,.]/);
+      if (separatorIndex < 0) return cleaned;
+      const whole = cleaned.slice(0, separatorIndex).replace(/[,.]/g, "");
+      const fraction = cleaned.slice(separatorIndex + 1).replace(/[,.]/g, "").slice(0, 2);
+      return whole + "," + fraction;
+    }
+
     function updateCustomGiftAmount() {
-      const amount = Number(customGiftPrice.value);
+      const amount = Number(customGiftPrice.value.replace(",", "."));
       const amountCents = Math.round(amount * 100);
       const valid = customGiftPrice.checkValidity()
         && Number.isFinite(amount)
@@ -1059,7 +1068,18 @@
     }
 
     sortOrder.addEventListener("change", () => renderGiftCards(sortOrder.value));
-    customGiftPrice.addEventListener("input", updateCustomGiftAmount);
+    customGiftPrice.addEventListener("input", () => {
+      const currentValue = customGiftPrice.value;
+      const selectionStart = customGiftPrice.selectionStart;
+      const cursorPosition = selectionStart === null ? currentValue.length : selectionStart;
+      const normalizedValue = normalizeCustomAmountInput(currentValue);
+      if (normalizedValue !== currentValue) {
+        const normalizedPrefix = normalizeCustomAmountInput(currentValue.slice(0, cursorPosition));
+        customGiftPrice.value = normalizedValue;
+        customGiftPrice.setSelectionRange(normalizedPrefix.length, normalizedPrefix.length);
+      }
+      updateCustomGiftAmount();
+    });
     renderGiftCards(sortOrder.value);
   }
 

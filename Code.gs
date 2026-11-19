@@ -4,7 +4,7 @@
  * Antes de publicar:
  * 1. Informe o ID da planilha em SPREADSHEET_ID.
  * 2. A planilha precisa ter as abas ListaConvidados, Logs-Site e Logs-Compras-Site.
- * 3. Logs-Compras-Site deve conter Carimbo, Nome, Telefone, Status, Número do pedido, Nome do presente e Valor.
+ * 3. Logs-Compras-Site deve conter Carimbo, Nome, Telefone, Status, Número do pedido, Nome do presente, Tipo de pagamento e Valor.
  * 4. Configure MP_ACCESS_TOKEN nas propriedades do script; nunca o inclua no código.
  * 5. Autorize o envio de e-mails ao publicar o Web App e configure o webhook de pedidos do Mercado Pago.
  */
@@ -12,7 +12,7 @@ const SPREADSHEET_ID = "18fidFBXi2vK99DnuN8ci3A_RUpujnF4PqdgIJk-NHVM";
 const GUEST_SHEET_NAME = "ListaConvidados";
 const LOG_SHEET_NAME = "Logs-Site";
 const PURCHASE_LOG_SHEET_NAME = "Logs-Compras-Site";
-const PURCHASE_LOG_HEADERS = ["Carimbo", "Nome", "Telefone", "Status", "Número do pedido", "Nome do presente", "Valor"];
+const PURCHASE_LOG_HEADERS = ["Carimbo", "Nome", "Telefone", "Status", "Número do pedido", "Nome do presente", "Tipo de pagamento", "Valor"];
 const TIME_ZONE = "America/Sao_Paulo";
 const RESPONSE_CHANNEL = "joao-taise-rsvp";
 const MERCADO_PAGO_TOKEN_PROPERTY = "MP_ACCESS_TOKEN";
@@ -121,7 +121,7 @@ function mercadoPagoWebhookOrderId_(event) {
 
 function createPixOrder_(giftId, email, rawAmount, rawPhone) {
   const guest = purchaseGuest_(rawPhone);
-  const purchaseDetails = purchaseForGift_(giftId, rawAmount, guest);
+  const purchaseDetails = purchaseForGift_(giftId, rawAmount, guest, "Pix");
   const gift = purchaseDetails.gift;
   const purchase = purchaseDetails.purchase;
   try {
@@ -161,7 +161,7 @@ const order = createMercadoPagoOrder_({
 
 function createCardOrder_(giftId, rawCardData, rawAmount, rawPhone) {
   const guest = purchaseGuest_(rawPhone);
-  const purchaseDetails = purchaseForGift_(giftId, rawAmount, guest);
+  const purchaseDetails = purchaseForGift_(giftId, rawAmount, guest, "Cartão de crédito");
   const gift = purchaseDetails.gift;
   const purchase = purchaseDetails.purchase;
   try {
@@ -178,6 +178,9 @@ function createCardOrder_(giftId, rawCardData, rawAmount, rawPhone) {
     const paymentMethodId = String(formData.payment_method_id || "");
     const token = String(formData.token || "");
     const installments = Number(formData.installments);
+    purchase.paymentType = Number.isInteger(installments) && installments >= 1
+      ? "Cartão de crédito - " + installments + "x"
+      : "Cartão de crédito";
     if (!/^[A-Za-z0-9_-]{1,40}$/.test(paymentMethodId)
       || !/^[A-Za-z0-9]{32,33}$/.test(token)
       || !Number.isInteger(installments)
@@ -258,13 +261,14 @@ function giftReference_(giftId) {
   return giftId + "-" + Utilities.getUuid();
 }
 
-function purchaseForGift_(giftId, rawAmount, guest) {
+function purchaseForGift_(giftId, rawAmount, guest, paymentType) {
   const catalogGift = GIFT_CATALOG[giftId];
   const purchase = {
     name: guest.name,
     phone: guest.phone,
     status: "",
     orderId: "",
+    paymentType: paymentType,
     giftTitle: catalogGift ? catalogGift.title : String(giftId || "").slice(0, 100),
     amount: catalogGift ? catalogGift.price : ""
   };
@@ -314,6 +318,7 @@ function recordPurchase_(purchase) {
       "Status": purchase.status,
       "Número do pedido": purchase.orderId,
       "Nome do presente": purchase.giftTitle,
+      "Tipo de pagamento": purchase.paymentType,
       "Valor": purchase.amount
     };
     Object.keys(values).forEach((header) => { cells[table.indexes[header]] = values[header]; });
@@ -518,9 +523,11 @@ function notifyGiftPurchase_(order) {
     const purchase = findPurchase_(order.orderId);
     if (!purchase) throw new Error("O pedido confirmado não foi encontrado na planilha de compras.");
     const body = PURCHASE_LOG_HEADERS.map((header) => {
-      const value = header === "Valor"
-        ? Number(purchase[header]).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-        : purchase[header];
+      let value = purchase[header];
+      if (header === "Carimbo") value = formatPurchaseTimestamp_(value);
+      if (header === "Valor") {
+        value = Number(value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+      }
       return header + ": " + value;
     }).join("\n");
     MailApp.sendEmail(
@@ -532,6 +539,21 @@ function notifyGiftPurchase_(order) {
   } finally {
     lock.releaseLock();
   }
+}
+
+function formatPurchaseTimestamp_(value) {
+  if (value instanceof Date && !isNaN(value.getTime())) {
+    return Utilities.formatDate(value, TIME_ZONE, "dd/MM/yyyy 'às' HH:mm:ss");
+  }
+
+  const text = String(value || "").trim();
+  const brazilianTimestamp = /^(\d{2}\/\d{2}\/\d{4})[ T](\d{2}:\d{2}:\d{2})$/.exec(text);
+  if (brazilianTimestamp) return brazilianTimestamp[1] + " às " + brazilianTimestamp[2];
+
+  const date = new Date(text.replace(/\s+\([^)]*\)$/, ""));
+  return !isNaN(date.getTime())
+    ? Utilities.formatDate(date, TIME_ZONE, "dd/MM/yyyy 'às' HH:mm:ss")
+    : text;
 }
 
 function validatePayerEmail_(email) {
