@@ -28,7 +28,7 @@
       <p class="verse">“Assim, eles já não são dois, mas uma só carne. Portanto, o que Deus uniu, ninguém o separe.”</p>
       <p class="verse-reference">Mateus 19:6</p>
       <div class="event-details">
-        <p><span class="detail-label">12 de dezembro de 2026</span><span class="detail-divider">·</span><span class="detail-label">às 13h30</span></p>
+        <p><span class="detail-label">12 de dezembro de 2026</span><span class="detail-divider">·</span><span class="detail-label">às 13h</span></p>
         <p class="venue">Coco Bambu — Shopping SP Market</p>
       </div>
     </section>
@@ -61,7 +61,7 @@
 
       <div id="already-view" hidden>
         <p class="eyebrow">Que bom receber sua visita</p>
-        <h2 class="section-title">Sua resposta já foi registrada</h2>
+        <h2 class="section-title">Resposta registrada</h2>
         <p class="section-copy" id="already-message"></p>
         <a class="button button-primary button-link" href="presentes.html">Ver lista de presentes</a>
       </div>
@@ -86,6 +86,10 @@
 
   <iframe class="api-frame" id="api-frame" name="api-frame" title="Conexão segura com o formulário de presença"></iframe>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js" defer></script>
-  <script src="script.js" defer></script>
+  <script>
+    const appScript = document.createElement("script");
+    appScript.src = `script.js?v=${Date.now()}`;
+    document.body.appendChild(appScript);
+  </script>
 </body>
 </html>

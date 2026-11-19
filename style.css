@@ -205,6 +205,7 @@ a { color: inherit; }
 .button:disabled { cursor: not-allowed; opacity: .48; }
 .button-link { width: auto; margin-top: 4px; }
 .rsvp-card #rsvp-view .gift-button { width: 100%; margin-top: 12px; }
+.rsvp-card #already-view .button-link { width: 100%; margin-top: 12px; }
 .logout-button { width: 100%; margin-top: 12px; border-color: var(--line); color: var(--muted); }
 
 .form-message { min-height: 1.3em; margin: 8px 0 0; color: var(--error); font: .8rem/1.5 var(--sans); }
@@ -272,6 +273,18 @@ a { color: inherit; }
   margin: 0 auto 64px;
 }
 
+.gift-sort {
+  display: flex;
+  width: min(1120px, calc(100% - 36px));
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin: 0 auto 18px;
+}
+
+.gift-sort .field-label { margin: 0; white-space: nowrap; }
+.gift-sort .text-input { width: auto; min-width: 190px; min-height: 44px; }
+
 .gift-card {
   overflow: hidden;
   border: 1px solid var(--line);
@@ -290,6 +303,8 @@ a { color: inherit; }
 .gift-content { display: flex; min-height: 190px; flex-direction: column; padding: 18px; }
 .gift-title { margin: 0 0 12px; color: var(--olive); font-size: .96rem; font-weight: 500; line-height: 1.55; }
 .gift-price { margin: auto 0 15px; color: var(--olive-dark); font: 600 .85rem var(--sans); }
+.custom-gift-amount { max-width: 430px; margin: 0 auto 16px; text-align: left; }
+.custom-gift-amount .field-label { margin-top: 12px; }
 .gift-button { width: 100%; min-height: 42px; border-color: var(--gold); background: transparent; color: var(--olive); }
 .gift-button:hover { background: var(--gold-pale); }
 .payment-modal {
@@ -389,6 +404,8 @@ a { color: inherit; }
   .nav-link { font-size: .66rem; }
   .site-nav { gap: 14px; }
   .site-footer { width: calc(100% - 32px); }
+  .gift-sort { align-items: stretch; flex-direction: column; gap: 7px; }
+  .gift-sort .text-input { width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

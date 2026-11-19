@@ -27,6 +27,14 @@
       <div class="ornament" aria-hidden="true"><span></span> ✦ <span></span></div>
       <p class="section-copy">Celebrar o nosso amor ao lado de pessoas tão especiais já é um presente. Mas, se desejar fazer parte também dos nossos próximos capítulos, preparamos algumas opções simbólicas para tornar nossa lua de mel ainda mais especial. Cada gesto será recebido com muito carinho e gratidão!</p>
     </section>
+    <div class="gift-sort">
+      <label class="field-label" for="gift-sort-order">Ordenar presentes</label>
+      <select class="text-input" id="gift-sort-order">
+        <option value="default">Ordem original</option>
+        <option value="ascending">Menor preço</option>
+        <option value="descending">Maior preço</option>
+      </select>
+    </div>
     <section class="gift-grid" id="gift-list" aria-label="Opções de presentes"></section>
   </main>
 
@@ -37,6 +45,10 @@
       <h2 class="section-title" id="payment-title">Seu presente</h2>
       <p class="payment-gift-name" id="payment-gift-name"></p>
       <p class="payment-gift-price">Valor do presente: <span id="payment-gift-price"></span></p>
+      <div class="custom-gift-amount" id="custom-gift-amount" hidden>
+        <label class="field-label" for="custom-gift-price">Escolha o valor da sua contribuição (a partir de R$ 1,00)</label>
+        <input class="text-input" id="custom-gift-price" type="number" inputmode="decimal" min="1" step="0.01" value="1.00">
+      </div>
       <p class="payment-security-note">Pagamento processado com segurança pelo Mercado Pago.</p>
 
       <section class="payment-breakdown" id="payment-breakdown" aria-label="Resumo do pagamento" aria-live="polite" hidden>
@@ -105,6 +117,10 @@
   </footer>
   <iframe class="api-frame" id="api-frame" name="api-frame" title="Conexão segura com o serviço de pagamento"></iframe>
   <script src="https://sdk.mercadopago.com/js/v2"></script>
-  <script src="script.js" defer></script>
+  <script>
+    const appScript = document.createElement("script");
+    appScript.src = `script.js?v=${Date.now()}`;
+    document.body.appendChild(appScript);
+  </script>
 </body>
 </html>

@@ -2,11 +2,13 @@
 
 (() => {
   // Cole aqui a URL do Web App publicado no Google Apps Script.
-  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx3gnrj31dmaTadB0Ki0aMs72UeGZ58gQ31Vmm6KI6rN87lNKBvKmtrOi71HeI9BEUd/exec";
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxWZnmVrwFfRmpBV6WKTcXUBWiDBno-IkqxOaNDxQyXnWkdRY_vhz0QStCP0XRQgXQV/exec";
   // Chave pública do Mercado Pago: pode ficar no front-end; nunca coloque o Access Token aqui.
   const MP_PUBLIC_KEY = "APP_USR-86b29075-f49a-4d12-b894-4f2024bd1c89";
   const API_CHANNEL = "joao-taise-rsvp";
   const BR_PHONE_LENGTHS = [10, 11];
+  const ACCESS_SESSION_KEY = "joao-taise-rsvp-session";
+  let giftAccessPhone = "";
 
   const onlyDigits = (value) => String(value || "").replace(/\D/g, "");
   const formatPhone = (value) => {
@@ -80,7 +82,7 @@
     const accessForm = document.getElementById("access-form");
     if (!accessForm) return;
 
-    const accessSessionKey = "joao-taise-rsvp-session";
+    const returningForGifts = new URLSearchParams(window.location.search).get("redirect") === "presentes.html";
     const loginView = document.getElementById("login-view");
     const phoneInput = document.getElementById("phone");
     const accessMessage = document.getElementById("access-message");
@@ -98,6 +100,7 @@
     const siteFooter = document.querySelector(".site-footer");
     let activeGuests = [];
     let activePhone = "";
+    if (returningForGifts) document.getElementById("rsvp-title").textContent = "Acesse a lista de presentes";
 
     phoneInput.addEventListener("input", () => {
       const cursorAtEnd = phoneInput.selectionStart === phoneInput.value.length;
@@ -123,7 +126,10 @@
           accessMessage.textContent = "Não encontramos esse celular na lista. Confira o número ou fale com os noivos.";
           return;
         }
-        saveAccessSession(phone, result);
+        if (!saveAccessSession(phone, result)) {
+          accessMessage.textContent = "Não foi possível manter a sessão nesta aba. Habilite o armazenamento do navegador e tente novamente.";
+          return;
+        }
         showAccessResult(phone, result, true);
       } catch (error) {
         accessMessage.textContent = error.message;
@@ -152,15 +158,17 @@
 
     function saveAccessSession(phone, result) {
       try {
-        window.sessionStorage.setItem(accessSessionKey, JSON.stringify({ phone, result }));
+        window.sessionStorage.setItem(ACCESS_SESSION_KEY, JSON.stringify({ phone, result }));
+        return true;
       } catch (error) {
         console.error("Não foi possível guardar a sessão do convite nesta aba.", error);
+        return false;
       }
     }
 
     function clearAccessSession() {
       try {
-        window.sessionStorage.removeItem(accessSessionKey);
+        window.sessionStorage.removeItem(ACCESS_SESSION_KEY);
       } catch (error) {
         console.error("Não foi possível encerrar a sessão do convite nesta aba.", error);
       }
@@ -169,7 +177,7 @@
     function restoreAccessSession() {
       let savedSession;
       try {
-        const serializedSession = window.sessionStorage.getItem(accessSessionKey);
+        const serializedSession = window.sessionStorage.getItem(ACCESS_SESSION_KEY);
         if (!serializedSession) return;
         savedSession = JSON.parse(serializedSession);
         const validPhone = savedSession
@@ -195,6 +203,10 @@
 
     function showAccessResult(phone, result, celebrate) {
       activePhone = onlyDigits(phone);
+      if (returningForGifts) {
+        window.location.replace("presentes.html");
+        return;
+      }
       invitationHero.hidden = false;
       giftsNavLink.hidden = false;
       siteFooter.hidden = false;
@@ -204,7 +216,7 @@
         const names = (result.responses || []).map((response) =>
           `${response.name}: ${response.status === "Confirmado" ? "presença confirmada" : "não poderá comparecer"}`
         ).join(" · ");
-        document.getElementById("already-message").textContent = names || "Sua resposta foi registrada anteriormente.";
+        document.getElementById("already-message").textContent = names || "Obrigado por nos avisar!";
         alreadyView.hidden = false;
         return;
       }
@@ -311,7 +323,7 @@
         return selected ? { index: activeGuests[index].index, answer: selected.value } : null;
       }).filter(Boolean);
       try {
-        await sendToAppsScript("POST", { action: "submit", phone: activePhone, answers: JSON.stringify(answers) });
+        const result = await sendToAppsScript("POST", { action: "submit", phone: activePhone, answers: JSON.stringify(answers) });
         saveAccessSession(activePhone, {
           found: true,
           alreadyResponded: true,
@@ -323,6 +335,9 @@
           document.getElementById("modal-description").textContent =
             "Sentiremos sua falta, mas agradecemos por nos avisar. Estaremos com você em pensamento nesse dia tão especial.";
           document.getElementById("modal-gifts-link").textContent = "Ver lista de presentes";
+        }
+        if (result.notificationWarning) {
+          document.getElementById("modal-description").textContent += ` ${result.notificationWarning}`;
         }
         modal.hidden = false;
         document.getElementById("modal-gifts-link").focus();
@@ -339,7 +354,7 @@
   }
 
   const gifts = [
-    { id: "gift-01", title: "Ajuda para nosso café da manhã romântico", price: 1, image: "photo-1504754524776-8f4f37790ca0", alt: "Mesa farta de café da manhã com frutas, waffles, ovos e café" },
+    { id: "gift-01", title: "Ajuda para nosso café da manhã romântico", price: 250, image: "photo-1504754524776-8f4f37790ca0", alt: "Mesa farta de café da manhã com frutas, waffles, ovos e café" },
     { id: "gift-02", title: "Um brinde ao nosso amor 🥂", price: 300, image: "photo-1510812431401-41d2bd2722f3", alt: "Taças para um brinde especial" },
     { id: "gift-03", title: "Um sorvete para adoçar nossa lua de mel", price: 50, image: "photo-1563805042-7684c019e1cb", alt: "Sorvete artesanal" },
     { id: "gift-04", title: "Um almoço com vista para o mar", price: 500, image: "photo-1766547325390-44833aa5675b", alt: "Buffet servido em restaurante à beira-mar, com o oceano ao fundo" },
@@ -353,15 +368,53 @@
     { id: "gift-12", title: "Uma contribuição especial para nossa lua de mel", price: 1500, image: "photo-1530789253388-582c481c54b0", alt: "Paisagem de viagem ao pôr do sol" },
     { id: "gift-13", title: "O empurrãozinho para realizarmos nosso sonho", price: 2500, image: "photo-1470252649378-9c29740c9fa8", alt: "Nascer do sol sobre uma paisagem" }
   ];
+  const donationGift = {
+    id: "gift-custom",
+    title: "Ajude com o valor que seu coração desejar",
+    price: 1,
+    image: "photo-1513201099705-a9746e1e201f",
+    alt: "Presente embrulhado com uma fita rosa",
+    customAmount: true
+  };
+
+  function initGiftAccessGate() {
+    if (!document.getElementById("gift-list")) return true;
+
+    try {
+      const serializedSession = window.sessionStorage.getItem(ACCESS_SESSION_KEY);
+      if (serializedSession) {
+        const savedSession = JSON.parse(serializedSession);
+        const phone = savedSession && onlyDigits(savedSession.phone);
+        const result = savedSession && savedSession.result;
+        const validResult = result
+          && result.found === true
+          && typeof result.alreadyResponded === "boolean"
+          && Array.isArray(result.responses)
+          && (result.alreadyResponded || (Array.isArray(result.guests) && result.guests.length > 0));
+        if (typeof phone === "string" && BR_PHONE_LENGTHS.includes(phone.length) && validResult) {
+          giftAccessPhone = phone;
+          return true;
+        }
+      }
+    } catch (error) {
+      console.error("Não foi possível validar a sessão para abrir a lista de presentes.", error);
+    }
+
+    window.location.replace("index.html?redirect=presentes.html");
+    return false;
+  }
 
   function initGiftList() {
     const list = document.getElementById("gift-list");
     if (!list) return;
     const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+    const sortOrder = document.getElementById("gift-sort-order");
     const modal = document.getElementById("payment-modal");
     const closeButton = document.getElementById("close-payment-modal");
     const giftName = document.getElementById("payment-gift-name");
     const giftPrice = document.getElementById("payment-gift-price");
+    const customGiftAmount = document.getElementById("custom-gift-amount");
+    const customGiftPrice = document.getElementById("custom-gift-price");
     const methodButtons = Array.from(document.querySelectorAll("[data-payment-method]"));
     const pixForm = document.getElementById("pix-form");
     const pixEmail = document.getElementById("pix-email");
@@ -511,6 +564,7 @@
       challengeInstructions.hidden = true;
       challengeFrame.src = "about:blank";
       checkPaymentButton.hidden = true;
+      checkPaymentButton.textContent = "Consultar pagamento";
       methodButtons.forEach((button) => { button.hidden = true; });
       setPaymentMessage("");
       paymentDone.focus();
@@ -520,6 +574,10 @@
       if (flow !== paymentFlow) return;
       if (isPaid(result)) {
         showPaid();
+        if (result.notificationWarning || result.logWarning) {
+          checkPaymentButton.textContent = "Tentar reenviar aviso";
+          checkPaymentButton.hidden = false;
+        }
       } else if (isFinalFailure(result)) {
         setPaymentMessage("O pagamento não foi aprovado. Você pode tentar novamente ou escolher outra forma de pagamento.", true);
         activeOrderId = "";
@@ -540,6 +598,8 @@
           setPaymentMessage("Aguardando a confirmação do Mercado Pago. O Pix pode levar alguns instantes para ser reconhecido.");
         }
       }
+      const warnings = [result.logWarning, result.notificationWarning].filter(Boolean).join(" ");
+      if (warnings) setPaymentMessage(warnings, true);
     }
 
     async function checkOrderStatus(orderId, flow, isPolling = false) {
@@ -589,8 +649,23 @@
 
     function showOrderResult(result, flow) {
       activeOrderId = result.orderId || "";
+      const immediatePaidFlow = paymentFlow + 1;
+      if (isPaid(result) && activeOrderId) {
+        sendToAppsScript("POST", { action: "paymentStatus", orderId: activeOrderId }).then((status) => {
+          if (paymentFlow !== immediatePaidFlow || !status.notificationWarning) return;
+          setPaymentMessage(status.notificationWarning, true);
+          checkPaymentButton.textContent = "Tentar reenviar aviso";
+          checkPaymentButton.hidden = false;
+        }).catch((error) => {
+          if (paymentFlow !== immediatePaidFlow) return;
+          setPaymentMessage(`Pagamento confirmado, mas não foi possível verificar o aviso por e-mail: ${error.message}`, true);
+          checkPaymentButton.textContent = "Tentar reenviar aviso";
+          checkPaymentButton.hidden = false;
+        });
+      }
       if (isChallenge(result)) showCardChallenge(result);
       else applyOrderStatus(result, flow);
+      if (result.logWarning) setPaymentMessage(result.logWarning, true);
       if (!isPaid(result) && !isFinalFailure(result) && activeOrderId) {
         pollOrderStatus(activeOrderId, flow);
       }
@@ -633,17 +708,38 @@
     }
 
     function openPaymentModal(gift) {
-      activeGift = gift;
+      activeGift = { ...gift };
       activeOrderId = "";
       paymentFlow += 1;
       giftName.textContent = gift.title;
       giftPrice.textContent = currency.format(gift.price);
+      customGiftAmount.hidden = !gift.customAmount;
+      customGiftPrice.value = gift.customAmount ? "1.00" : "";
+      methodButtons.forEach((button) => { button.hidden = false; });
+      if (gift.customAmount) updateCustomGiftAmount();
       paymentBreakdown.hidden = true;
       cardFeeNote.hidden = true;
       cardPaymentReview.hidden = true;
       setPaymentMessage("");
       modal.hidden = false;
-      closeButton.focus();
+      if (gift.customAmount) customGiftPrice.focus();
+      else closeButton.focus();
+    }
+
+    function updateCustomGiftAmount() {
+      const amount = Number(customGiftPrice.value);
+      const amountCents = Math.round(amount * 100);
+      const valid = customGiftPrice.checkValidity()
+        && Number.isFinite(amount)
+        && Number.isSafeInteger(amountCents)
+        && amountCents >= 100;
+      if (valid) {
+        activeGift.price = amountCents / 100;
+        giftPrice.textContent = currency.format(activeGift.price);
+      } else {
+        giftPrice.textContent = "Informe um valor a partir de R$ 1,00";
+      }
+      methodButtons.forEach((button) => { button.hidden = !valid; });
     }
 
     function prepareCardPaymentReview(formData, additionalData, flow) {
@@ -702,6 +798,8 @@
         const result = await sendToAppsScript("POST", {
           action: "createCardOrder",
           giftId: activeGift.id,
+          amount: activeGift.price,
+          phone: giftAccessPhone,
           cardData: JSON.stringify({
             formData: pendingPayment.formData,
             paymentType: pendingPayment.paymentType
@@ -792,6 +890,8 @@
 
     async function selectPaymentMethod(method) {
       if (activeOrderId) return;
+      if (!activeGift || !Number.isFinite(activeGift.price)) return;
+      customGiftAmount.hidden = true;
       methodButtons.forEach((button) => {
         const selected = button.dataset.paymentMethod === method;
         button.classList.toggle("is-selected", selected);
@@ -834,6 +934,8 @@
         const result = await sendToAppsScript("POST", {
           action: "createPixOrder",
           giftId: activeGift.id,
+          amount: activeGift.price,
+          phone: giftAccessPhone,
           email: pixEmail.value.trim()
         }, 45000);
         if (flow !== paymentFlow) return;
@@ -921,7 +1023,13 @@
       if (event.key === "Escape" && !modal.hidden) closePaymentModal();
     });
 
-    gifts.forEach((gift) => {
+    function renderGiftCards(order) {
+      list.replaceChildren();
+      const orderedGifts = gifts.concat(donationGift);
+      if (order === "ascending") orderedGifts.sort((a, b) => a.price - b.price);
+      if (order === "descending") orderedGifts.sort((a, b) => b.price - a.price);
+
+      orderedGifts.forEach((gift) => {
       const card = document.createElement("article");
       card.className = "gift-card";
       const image = document.createElement("img");
@@ -936,7 +1044,9 @@
       title.textContent = gift.title;
       const price = document.createElement("p");
       price.className = "gift-price";
-      price.textContent = currency.format(gift.price);
+      price.textContent = gift.customAmount
+        ? `A partir de ${currency.format(gift.price)} · valor livre`
+        : currency.format(gift.price);
       const button = document.createElement("button");
       button.className = "button gift-button";
       button.type = "button";
@@ -945,9 +1055,14 @@
       content.append(title, price, button);
       card.append(image, content);
       list.appendChild(card);
-    });
+      });
+    }
+
+    sortOrder.addEventListener("change", () => renderGiftCards(sortOrder.value));
+    customGiftPrice.addEventListener("input", updateCustomGiftAmount);
+    renderGiftCards(sortOrder.value);
   }
 
   initRsvp();
-  initGiftList();
+  if (initGiftAccessGate()) initGiftList();
 })();
