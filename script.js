@@ -709,12 +709,13 @@
 
     function openPaymentModal(gift) {
       activeGift = { ...gift };
+      if (gift.customAmount) activeGift.price = 0;
       activeOrderId = "";
       paymentFlow += 1;
       giftName.textContent = gift.title;
-      giftPrice.textContent = currency.format(gift.price);
+      giftPrice.textContent = currency.format(activeGift.price);
       customGiftAmount.hidden = !gift.customAmount;
-      customGiftPrice.value = gift.customAmount ? "1,00" : "";
+      customGiftPrice.value = gift.customAmount ? currency.format(0) : "";
       methodButtons.forEach((button) => { button.hidden = false; });
       if (gift.customAmount) updateCustomGiftAmount();
       paymentBreakdown.hidden = true;
@@ -726,29 +727,26 @@
       else closeButton.focus();
     }
 
-    function normalizeCustomAmountInput(value) {
-      const cleaned = String(value || "").replace(/[^\d,.]/g, "");
-      const separatorIndex = cleaned.search(/[,.]/);
-      if (separatorIndex < 0) return cleaned;
-      const whole = cleaned.slice(0, separatorIndex).replace(/[,.]/g, "");
-      const fraction = cleaned.slice(separatorIndex + 1).replace(/[,.]/g, "").slice(0, 2);
-      return whole + "," + fraction;
+    function updateCustomGiftAmount() {
+      const centsText = customGiftPrice.value.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+      const amountCents = Number(centsText || "0");
+      if (!Number.isSafeInteger(amountCents)) {
+        giftPrice.textContent = "Valor muito alto";
+        methodButtons.forEach((button) => { button.hidden = true; });
+        return;
+      }
+
+      const amount = amountCents / 100;
+      customGiftPrice.value = currency.format(amount);
+      customGiftPrice.setSelectionRange(customGiftPrice.value.length, customGiftPrice.value.length);
+      activeGift.price = amount;
+      giftPrice.textContent = currency.format(amount);
+      methodButtons.forEach((button) => { button.hidden = amountCents < 100; });
     }
 
-    function updateCustomGiftAmount() {
-      const amount = Number(customGiftPrice.value.replace(",", "."));
-      const amountCents = Math.round(amount * 100);
-      const valid = customGiftPrice.checkValidity()
-        && Number.isFinite(amount)
-        && Number.isSafeInteger(amountCents)
-        && amountCents >= 100;
-      if (valid) {
-        activeGift.price = amountCents / 100;
-        giftPrice.textContent = currency.format(activeGift.price);
-      } else {
-        giftPrice.textContent = "Informe um valor a partir de R$ 1,00";
-      }
-      methodButtons.forEach((button) => { button.hidden = !valid; });
+    function moveCustomAmountCaretToEnd() {
+      const end = customGiftPrice.value.length;
+      customGiftPrice.setSelectionRange(end, end);
     }
 
     function prepareCardPaymentReview(formData, additionalData, flow) {
@@ -1068,17 +1066,14 @@
     }
 
     sortOrder.addEventListener("change", () => renderGiftCards(sortOrder.value));
-    customGiftPrice.addEventListener("input", () => {
-      const currentValue = customGiftPrice.value;
-      const selectionStart = customGiftPrice.selectionStart;
-      const cursorPosition = selectionStart === null ? currentValue.length : selectionStart;
-      const normalizedValue = normalizeCustomAmountInput(currentValue);
-      if (normalizedValue !== currentValue) {
-        const normalizedPrefix = normalizeCustomAmountInput(currentValue.slice(0, cursorPosition));
-        customGiftPrice.value = normalizedValue;
-        customGiftPrice.setSelectionRange(normalizedPrefix.length, normalizedPrefix.length);
+    customGiftPrice.addEventListener("input", updateCustomGiftAmount);
+    customGiftPrice.addEventListener("focus", moveCustomAmountCaretToEnd);
+    customGiftPrice.addEventListener("click", moveCustomAmountCaretToEnd);
+    customGiftPrice.addEventListener("keydown", (event) => {
+      if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
+        event.preventDefault();
+        moveCustomAmountCaretToEnd();
       }
-      updateCustomGiftAmount();
     });
     renderGiftCards(sortOrder.value);
   }
