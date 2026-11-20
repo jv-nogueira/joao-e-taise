@@ -11,8 +11,22 @@
   let giftAccessPhone = "";
 
   const onlyDigits = (value) => String(value || "").replace(/\D/g, "");
+  const phoneDigits = (value) => {
+    const raw = String(value || "").trim();
+    let digits = onlyDigits(raw);
+
+    if (/^\+\s*55(?:\D|$)/.test(raw)) {
+      digits = digits.slice(2);
+    } else if (/^0055(?:\D|$)/.test(raw)) {
+      digits = digits.slice(4);
+    } else if (/^55(?:\D|$)/.test(raw) && digits.length >= 12) {
+      digits = digits.slice(2);
+    }
+
+    return digits.slice(0, 11);
+  };
   const formatPhone = (value) => {
-    const digits = onlyDigits(value).slice(0, 11);
+    const digits = phoneDigits(value);
     if (digits.length <= 2) return digits.length ? `(${digits}` : "";
     if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
     if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
@@ -102,6 +116,15 @@
     let activePhone = "";
     if (returningForGifts) document.getElementById("rsvp-title").textContent = "Acesse a lista de presentes";
 
+    phoneInput.addEventListener("paste", (event) => {
+      event.preventDefault();
+      const pasted = event.clipboardData
+        ? event.clipboardData.getData("text")
+        : "";
+      phoneInput.value = formatPhone(pasted);
+      phoneInput.setSelectionRange(phoneInput.value.length, phoneInput.value.length);
+    });
+
     phoneInput.addEventListener("input", () => {
       const cursorAtEnd = phoneInput.selectionStart === phoneInput.value.length;
       phoneInput.value = formatPhone(phoneInput.value);
@@ -111,7 +134,7 @@
     accessForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       accessMessage.textContent = "";
-      const phone = onlyDigits(phoneInput.value);
+      const phone = phoneDigits(phoneInput.value);
       if (!BR_PHONE_LENGTHS.includes(phone.length)) {
         accessMessage.textContent = "Confira o celular: informe o DDD e o número completo.";
         phoneInput.focus();
@@ -182,7 +205,7 @@
         savedSession = JSON.parse(serializedSession);
         const validPhone = savedSession
           && typeof savedSession.phone === "string"
-          && BR_PHONE_LENGTHS.includes(onlyDigits(savedSession.phone).length);
+          && BR_PHONE_LENGTHS.includes(phoneDigits(savedSession.phone).length);
         const result = savedSession && savedSession.result;
         const validResult = result
           && result.found === true
@@ -202,7 +225,7 @@
     }
 
     function showAccessResult(phone, result, celebrate) {
-      activePhone = onlyDigits(phone);
+      activePhone = phoneDigits(phone);
       if (returningForGifts) {
         window.location.replace("presentes.html");
         return;
@@ -408,7 +431,7 @@
       const serializedSession = window.sessionStorage.getItem(ACCESS_SESSION_KEY);
       if (serializedSession) {
         const savedSession = JSON.parse(serializedSession);
-        const phone = savedSession && onlyDigits(savedSession.phone);
+        const phone = savedSession && phoneDigits(savedSession.phone);
         const result = savedSession && savedSession.result;
         const validResult = result
           && result.found === true
