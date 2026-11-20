@@ -248,16 +248,9 @@
         legend.className = "guest-question";
         legend.textContent = index === 0 ? "Sua resposta" : makeCompanionQuestion(guest);
         group.appendChild(legend);
-        const subject = index === 0
-          ? "você"
-          : guest.gender === "M"
-            ? "ele"
-            : guest.gender === "Ms"
-              ? "eles"
-              : guest.gender === "Fs"
-                ? "elas"
-                : "ela";
-        const plural = subject === "eles" || subject === "elas";
+        const companion = companionPronouns(guest);
+        const subject = index === 0 ? "você" : companion.subject;
+        const plural = index !== 0 && companion.plural;
         const options = index === 0
           ? [{ value: "Sim", label: "Sim, não perco por nada!" }, { value: "Não", label: "Não, infelizmente não poderei comparecer." }]
           : [{ value: "Sim", label: `Sim, ${subject} também ${plural ? "vão" : "vai"}` }, { value: "Não", label: `${subject[0].toUpperCase()}${subject.slice(1)} não ${plural ? "vão" : "vai"} poder comparecer` }];
@@ -284,8 +277,29 @@
       if (/^(a|o|as|os|sua|seu|suas|seus|esposa|esposo|filha|filho|mãe|pai|irmã|irmão)\b/i.test(reason)) {
         return `Confirmar presença de ${reason}?`;
       }
-      const possessive = guest.gender === "M" ? "o seu" : guest.gender === "Ms" ? "os seus" : guest.gender === "Fs" ? "as suas" : "a sua";
+      const possessive = companionPronouns(guest).possessive;
       return `E ${possessive} ${reason}?`;
+    }
+
+    function companionPronouns(guest) {
+      const gender = String(guest.gender || "").trim().toUpperCase();
+      const reason = String(guest.reason || "").trim().toLowerCase();
+      const femininePlural = gender === "FS"
+        || /\b(suas|duas)\b/.test(reason)
+        || /\b(filhas|irmãs|esposas|mães)\b/.test(reason);
+      const masculinePlural = gender === "MS"
+        || /\b(seus|dois)\b/.test(reason)
+        || /\b(filhos|irmãos|esposos|pais)\b/.test(reason);
+      const plural = femininePlural || masculinePlural;
+
+      if (femininePlural) {
+        return { plural: true, subject: "elas", possessive: "as suas" };
+      }
+      if (masculinePlural) {
+        return { plural: true, subject: "eles", possessive: "os seus" };
+      }
+      if (gender === "M") return { plural: false, subject: "ele", possessive: "o seu" };
+      return { plural: false, subject: "ela", possessive: "a sua" };
     }
 
     function updateConfirmState() {
