@@ -248,10 +248,19 @@
         legend.className = "guest-question";
         legend.textContent = index === 0 ? "Sua resposta" : makeCompanionQuestion(guest);
         group.appendChild(legend);
-        const subject = index === 0 ? "você" : guest.gender === "M" ? "ele" : "ela";
+        const subject = index === 0
+          ? "você"
+          : guest.gender === "M"
+            ? "ele"
+            : guest.gender === "Ms"
+              ? "eles"
+              : guest.gender === "Fs"
+                ? "elas"
+                : "ela";
+        const plural = subject === "eles" || subject === "elas";
         const options = index === 0
           ? [{ value: "Sim", label: "Sim, não perco por nada!" }, { value: "Não", label: "Não, infelizmente não poderei comparecer." }]
-          : [{ value: "Sim", label: `Sim, ${subject} também vai` }, { value: "Não", label: `${subject[0].toUpperCase()}${subject.slice(1)} não vai poder comparecer` }];
+          : [{ value: "Sim", label: `Sim, ${subject} também ${plural ? "vão" : "vai"}` }, { value: "Não", label: `${subject[0].toUpperCase()}${subject.slice(1)} não ${plural ? "vão" : "vai"} poder comparecer` }];
         options.forEach((option) => {
           const label = document.createElement("label");
           label.className = "radio-option";
@@ -275,7 +284,8 @@
       if (/^(a|o|as|os|sua|seu|suas|seus|esposa|esposo|filha|filho|mãe|pai|irmã|irmão)\b/i.test(reason)) {
         return `Confirmar presença de ${reason}?`;
       }
-      return `E ${guest.gender === "M" ? "o seu" : "a sua"} ${reason}?`;
+      const possessive = guest.gender === "M" ? "o seu" : guest.gender === "Ms" ? "os seus" : guest.gender === "Fs" ? "as suas" : "a sua";
+      return `E ${possessive} ${reason}?`;
     }
 
     function updateConfirmState() {
