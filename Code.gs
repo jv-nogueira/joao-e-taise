@@ -471,7 +471,9 @@ function getMercadoPagoOrderStatus_(orderId) {
 
   if (summary.status.toLowerCase() === "processed" && summary.statusDetail.toLowerCase() === "accredited") {
     try {
-      if (summary.logWarning) throw new Error(summary.logWarning);
+      if (!findPurchase_(orderId)) {
+        throw new Error("O pedido confirmado não foi encontrado na planilha de compras.");
+      }
       notifyGiftPurchase_(summary);
     } catch (error) {
       console.error("Payment was confirmed but the gift notification email could not be sent.", error);
@@ -484,6 +486,86 @@ function getMercadoPagoOrderStatus_(orderId) {
     }
   }
   return summary;
+}
+
+function checkPendingPurchases() {
+  checkPendingPurchases_();
+}
+
+function checkPendingPurchases_() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) {
+    console.warn("Pending purchase check skipped because another script execution holds the lock.");
+    return;
+  }
+
+  let pendingOrderIds = [];
+  try {
+    const sheet = purchaseLogSheet_();
+    const table = readTable_(sheet, PURCHASE_LOG_HEADERS);
+    const rows = sheet.getDataRange().getValues();
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    const timestampColumn = table.indexes["Carimbo"];
+    const statusColumn = table.indexes["Status"];
+    const orderColumn = table.indexes["Número do pedido"];
+
+    pendingOrderIds = rows.slice(1).filter((row) => {
+      const timestamp = purchaseTimestampDate_(row[timestampColumn]);
+      const status = String(row[statusColumn] || "").trim().toLowerCase();
+      const orderId = String(row[orderColumn] || "").trim();
+      return timestamp && timestamp.getTime() >= cutoff
+        && isPendingPurchaseStatus_(status)
+        && /^ORD[A-Z0-9]{8,48}$/i.test(orderId);
+    }).map((row) => String(row[orderColumn]).trim());
+  } finally {
+    lock.releaseLock();
+  }
+
+  pendingOrderIds.forEach((orderId) => {
+    try {
+      getMercadoPagoOrderStatus_(orderId);
+    } catch (error) {
+      console.error("Could not check pending purchase " + orderId + ".", error);
+    }
+  });
+}
+
+function purchaseTimestampDate_(value) {
+  if (value instanceof Date && !isNaN(value.getTime())) return value;
+  const timestamp = String(value || "").trim();
+  if (!/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/.test(timestamp)) return null;
+  try {
+    const parsed = Utilities.parseDate(timestamp, TIME_ZONE, "dd/MM/yyyy HH:mm:ss");
+    return isNaN(parsed.getTime()) ? null : parsed;
+  } catch (error) {
+    return null;
+  }
+}
+
+function isPendingPurchaseStatus_(status) {
+  if (/^confirmado\b/.test(status)) return false;
+  if (/^(não aprovado|nao aprovado|falhou|falha|cancelado|cancelada|expirado|expirada|rejeitado|rejeitada)\b/.test(status)) {
+    return false;
+  }
+  return true;
+}
+
+function resendGiftNotification(orderId) {
+  const normalizedOrderId = String(orderId || "").trim();
+  if (!/^ORD[A-Z0-9]{8,48}$/i.test(normalizedOrderId)) {
+    throw new Error("Informe um número de pedido válido.");
+  }
+  if (!findPurchase_(normalizedOrderId)) {
+    throw new Error("O pedido não foi encontrado na planilha de compras.");
+  }
+
+  const summary = getMercadoPagoOrderStatus_(normalizedOrderId);
+  if (summary.status.toLowerCase() !== "processed" || summary.statusDetail.toLowerCase() !== "accredited") {
+    throw new Error("O pagamento deste pedido ainda não está confirmado.");
+  }
+  updatePurchaseStatus_(normalizedOrderId, "Confirmado");
+  notifyGiftPurchase_(summary);
+  return { ok: true, orderId: normalizedOrderId };
 }
 
 function paymentOrderSummary_(order) {
@@ -636,6 +718,7 @@ function submitAnswers_(rawPhone, answers) {
   if (!Array.isArray(answers) || !answers.length) throw new Error("Nenhuma resposta foi enviada.");
 
   let notificationAnswers = [];
+  let notificationTimestamp = "";
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
@@ -682,6 +765,7 @@ function submitAnswers_(rawPhone, answers) {
     }
 
     const timestamp = Utilities.formatDate(new Date(), TIME_ZONE, "dd/MM/yyyy HH:mm:ss");
+    notificationTimestamp = timestamp;
     const entries = [];
     selected.forEach((item) => {
       const answer = decliningAdultGroup ? "Não" : answerByIndex[item.index];
@@ -706,7 +790,7 @@ function submitAnswers_(rawPhone, answers) {
 
   if (!notificationAnswers.some((answer) => answer.answer === "Sim")) return { ok: true };
   try {
-    notifyRsvp_(notificationAnswers);
+    notifyRsvp_(notificationAnswers, notificationTimestamp);
     return { ok: true };
   } catch (error) {
     console.error("RSVP was saved but the notification email could not be sent.", error);
@@ -717,8 +801,7 @@ function submitAnswers_(rawPhone, answers) {
   }
 }
 
-function notifyRsvp_(answers) {
-  const timestamp = Utilities.formatDate(new Date(), TIME_ZONE, "dd/MM/yyyy HH:mm:ss");
+function notifyRsvp_(answers, timestamp) {
   const body = [
     "Uma nova resposta de presença foi registrada para o casamento de João e Taise.",
     "",
